@@ -7,8 +7,8 @@ from typing import Protocol
 class NoteEvent:
     pitch: int
     velocity: int
-    start_tick: int
-    duration_tick: int
+    start_ms: int
+    duration_ms: int
     gate: float
     probability: float
     chan: int
@@ -16,7 +16,7 @@ class NoteEvent:
 
 @dataclass
 class ScoreContext:
-    tick_cursor: int
+    cursor_ms: int
 
 
 class ScoreInput(Protocol):
@@ -27,7 +27,7 @@ class ScoreInput(Protocol):
 class ZippedNotes:
     pitch: Sequence[int] = field(default_factory=lambda: [60])
     velocity: Sequence[int] = field(default_factory=lambda: [100])
-    duration: Sequence[int] = field(default_factory=lambda: [1000])  # 1ms
+    duration: Sequence[int] = field(default_factory=lambda: [1000])
     gate: Sequence[float] = field(default_factory=lambda: [1.0])
     probability: Sequence[float] = field(default_factory=lambda: [1.0])
     chan: Sequence[int] = field(default_factory=lambda: [0])
@@ -40,24 +40,22 @@ class ZippedNotes:
             g = self.gate[i % len(self.gate)]
             r = self.probability[i % len(self.probability)]
             c = self.chan[i % len(self.chan)]
-            yield NoteEvent(
-                pitch=p, velocity=v, start_tick=ctx.tick_cursor, duration_tick=d, gate=g, probability=r, chan=c
-            )
-            ctx.tick_cursor += d
+            yield NoteEvent(pitch=p, velocity=v, start_ms=ctx.cursor_ms, duration_ms=d, gate=g, probability=r, chan=c)
+            ctx.cursor_ms += d
 
 
 class Score:
     def __init__(self):
-        self._context: ScoreContext = ScoreContext(tick_cursor=0)
+        self._context: ScoreContext = ScoreContext(cursor_ms=0)
         self._events: list[NoteEvent] = []
         self._sorted_by_start: list[NoteEvent] = []
         self._dirty: bool = False
 
     def get_cursor(self) -> int:
-        return self._context.tick_cursor
+        return self._context.cursor_ms
 
-    def set_cursor(self, tick_cursor: int) -> None:
-        self._context.tick_cursor = tick_cursor
+    def set_cursor(self, cursor_ms: int) -> None:
+        self._context.cursor_ms = cursor_ms
 
     def add(
         self,
@@ -88,15 +86,15 @@ class Score:
 
     def _ensure_sorted(self):
         if self._dirty:
-            self._sorted_by_start = sorted(self._events, key=lambda e: e.start_tick)
+            self._sorted_by_start = sorted(self._events, key=lambda e: e.start_ms)
             self._dirty = False
 
-    def events_between(self, start_tick: int, end_tick: int) -> list[NoteEvent]:
+    def events_between(self, start_ms: int, end_ms: int) -> list[NoteEvent]:
         self._ensure_sorted()
 
         result = []
         for e in self._sorted_by_start:
-            if start_tick <= e.start_tick <= end_tick:
+            if start_ms <= e.start_ms <= end_ms:
                 result.append(e)
 
         return result

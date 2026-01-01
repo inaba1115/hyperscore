@@ -27,7 +27,7 @@ class ScoreInput(Protocol):
 class ZippedNotes:
     pitch: Sequence[int] = field(default_factory=lambda: [60])
     velocity: Sequence[int] = field(default_factory=lambda: [100])
-    duration: Sequence[int] = field(default_factory=lambda: [1000])  # int(default_tick_rate * 1.0sec)
+    duration: Sequence[int] = field(default_factory=lambda: [1000])  # 1ms
     gate: Sequence[float] = field(default_factory=lambda: [1.0])
     probability: Sequence[float] = field(default_factory=lambda: [1.0])
     chan: Sequence[int] = field(default_factory=lambda: [0])
@@ -47,19 +47,17 @@ class ZippedNotes:
 
 
 class Score:
-    def __init__(self, tick_rate: int = 1000):
-        self._tick_rate = tick_rate
+    def __init__(self):
         self._context: ScoreContext = ScoreContext(tick_cursor=0)
         self._events: list[NoteEvent] = []
+        self._sorted_by_start: list[NoteEvent] = []
+        self._dirty: bool = False
 
     def get_cursor(self) -> int:
         return self._context.tick_cursor
 
     def set_cursor(self, tick_cursor: int) -> None:
         self._context.tick_cursor = tick_cursor
-
-    def get_events(self) -> Iterable[NoteEvent]:
-        return sorted(self._events, key=lambda e: e.start_tick)
 
     def add(
         self,
@@ -74,6 +72,7 @@ class Score:
     ) -> None:
         if source:
             self._events.extend(source.iter_events(self._context))
+            self._dirty = True
         else:
             kwargs = {
                 "pitch": pitch,
@@ -85,3 +84,19 @@ class Score:
             }
             source = ZippedNotes(**{k: v for k, v in kwargs.items() if v is not None})  # type: ignore
             self._events.extend(source.iter_events(self._context))
+            self._dirty = True
+
+    def _ensure_sorted(self):
+        if self._dirty:
+            self._sorted_by_start = sorted(self._events, key=lambda e: e.start_tick)
+            self._dirty = False
+
+    def events_between(self, start_tick: int, end_tick: int) -> list[NoteEvent]:
+        self._ensure_sorted()
+
+        result = []
+        for e in self._sorted_by_start:
+            if start_tick <= e.start_tick <= end_tick:
+                result.append(e)
+
+        return result

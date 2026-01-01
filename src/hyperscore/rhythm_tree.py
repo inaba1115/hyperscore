@@ -15,16 +15,15 @@ sequence: element+
         | simple
 
 repeated: simple "*" INT
-        | "(" simple ")" "*" INT -> repeat
-        
+        | "(" simple ")" "*" INT
 
 ?simple: atom
        | group
        | division
 
-atom: INT                     -> atom
-group: INT "[" sequence "]"   -> group
-division: INT "/" INT         -> division
+atom: INT
+group: INT "[" sequence "]"
+division: INT "/" INT
 
 %import common.INT
 %import common.WS
@@ -83,7 +82,7 @@ class RhythmTransformer(Transformer):
     def group(self, weight: int, body: Sequence):
         return Group(weight, body)
 
-    def repeat(self, node: Node, n: int):
+    def repeated(self, node: Node, n: int):
         return Repeat(node, n)
 
 
@@ -127,8 +126,8 @@ def node_weight(node: Node) -> Fraction:
     if isinstance(node, Atom):
         return Fraction(node.value, 1)
 
-    if isinstance(node, Division):
-        return Fraction(node.num, node.den)
+    # if isinstance(node, Division):
+    #     return Fraction(node.num, node.den)
 
     if isinstance(node, Group):
         # Group 自身の weight は「外側に対する比率」
@@ -187,12 +186,4 @@ def rhythm_to_ticks(
     assert isinstance(norm, Sequence)
 
     durations_frac = expand_sequence(norm)
-    print(durations_frac)
     return quantize_durations_to_ticks(durations_frac, total_ticks)
-
-
-if __name__ == "__main__":
-    ast = parse_rhythm("3 [ (1/2)*3 2 ] 3")
-    ticks = rhythm_to_ticks(ast, total_ticks=1000)
-    print(ticks)
-    print(sum(ticks))

@@ -2,15 +2,15 @@ import mido
 
 import hyperscore
 
-s = hyperscore.Score()
+score = hyperscore.Score()
 
-ast = hyperscore.parse_rhythm("1/30")
-print(ast)
+arp = [52, 55, 57, 55, 62, 60, 62, 64]
 
-duration = hyperscore.rhythm_to_ticks(ast, total_ticks=5000)
-print(duration)
+ast = hyperscore.parse_rhythm("1*8")
+duration = hyperscore.rhythm_to_ticks(ast, total_ticks=1000)
 
-s.add(pitch=[60, 62, 64, 65], duration=duration)
+for _ in range(8):
+    score.add(pitch=arp, duration=duration)
 
 # exporter = hyperscore.MidiExporter(ticks_per_beat=500)
 # exporter.export(s, "foo.mid", channel=0)
@@ -18,4 +18,4 @@ s.add(pitch=[60, 62, 64, 65], duration=duration)
 # print(s.events_between(0, 10000))
 
 player = hyperscore.MidiPlayer(output=mido.get_output_names()[0])  # type: ignore
-player.play(s)
+player.play(score)

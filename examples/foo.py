@@ -4,9 +4,10 @@ import hyperscore
 
 s = hyperscore.Score()
 
-ast = hyperscore.parse_rhythm("1 1 1")
-duration = hyperscore.rhythm_to_ticks(ast, total_ticks=5000)
+ast = hyperscore.parse_rhythm("1/30")
+print(ast)
 
+duration = hyperscore.rhythm_to_ticks(ast, total_ticks=5000)
 print(duration)
 
 s.add(pitch=[60, 62, 64, 65], duration=duration)

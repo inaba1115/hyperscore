@@ -93,8 +93,11 @@ def parse_rhythm(text: str) -> Sequence:
 
 
 def normalize(node: Node) -> Node:
-    if isinstance(node, (Atom, Division)):
+    if isinstance(node, Atom):
         return node
+
+    if isinstance(node, Division):
+        return Group(node.num, Sequence([Atom(1) for _ in range(node.den)]))
 
     if isinstance(node, Group):
         return Group(node.weight, normalize_sequence(node.body))
@@ -184,6 +187,7 @@ def rhythm_to_ticks(
     assert isinstance(norm, Sequence)
 
     durations_frac = expand_sequence(norm)
+    print(durations_frac)
     return quantize_durations_to_ticks(durations_frac, total_ticks)
 
 

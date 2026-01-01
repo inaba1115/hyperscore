@@ -52,11 +52,14 @@ class Score:
         self._context: ScoreContext = ScoreContext(tick_cursor=0)
         self._events: list[NoteEvent] = []
 
-    def get_tick_cursor(self) -> int:
+    def get_cursor(self) -> int:
         return self._context.tick_cursor
 
-    def set_tick_cursor(self, tick_cursor: int) -> None:
+    def set_cursor(self, tick_cursor: int) -> None:
         self._context.tick_cursor = tick_cursor
+
+    def get_events(self) -> Iterable[NoteEvent]:
+        return sorted(self._events, key=lambda e: e.start_tick)
 
     def add(
         self,
@@ -82,6 +85,3 @@ class Score:
             }
             source = ZippedNotes(**{k: v for k, v in kwargs.items() if v is not None})  # type: ignore
             self._events.extend(source.iter_events(self._context))
-
-    def get_events(self) -> Iterable[NoteEvent]:
-        return sorted(self._events, key=lambda e: e.start_tick)

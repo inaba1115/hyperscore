@@ -1,6 +1,11 @@
-def hello() -> str:
-    return "Hello from hyperscore!"
+from .rhythm_tree import RhythmTree
+from .score import NoteEvent, Score, ScoreContext, ScoreInput, ZippedNotes
 
-
-def add(x: int, y: int) -> int:
-    return x + y
+__all__ = [
+    "NoteEvent",
+    "RhythmTree",
+    "Score",
+    "ScoreContext",
+    "ScoreInput",
+    "ZippedNotes",
+]

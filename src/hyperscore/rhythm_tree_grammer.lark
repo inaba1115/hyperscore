@@ -1,0 +1,12 @@
+start: (repeat | node)+
+
+repeat: node "*" INT
+
+?node: atom | children | division
+atom: INT
+children: INT "[" start "]"
+division: INT "/" INT
+
+%import common.INT
+%import common.WS
+%ignore WS

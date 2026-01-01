@@ -32,3 +32,7 @@ class TestRhythmTree(unittest.TestCase):
         ast = hyperscore.parse_rhythm("1 3[1/2 2[1 2[1 1] 1]]")
         ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=400)
         self.assertEqual(ticks, [100, 50, 50, 50, 50, 50, 50])
+
+        ast = hyperscore.parse_rhythm("(1[1 2])*2")
+        ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=600)
+        self.assertEqual(ticks, [100, 200, 100, 200])

@@ -3,7 +3,13 @@ import mido
 import hyperscore
 
 s = hyperscore.Score()
-s.add(pitch=[60, 62, 64, 65], duration=[1000, 1000, 1000, 1000], channel=[0, 1])
+
+ast = hyperscore.parse_rhythm("1 1 1")
+duration = hyperscore.rhythm_to_ticks(ast, total_ticks=5000)
+
+print(duration)
+
+s.add(pitch=[60, 62, 64, 65], duration=duration)
 
 # exporter = hyperscore.MidiExporter(ticks_per_beat=500)
 # exporter.export(s, "foo.mid", channel=0)

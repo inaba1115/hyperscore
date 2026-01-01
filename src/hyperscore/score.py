@@ -11,7 +11,7 @@ class NoteEvent:
     duration_ms: int
     gate: float
     probability: float
-    chan: int
+    channel: int
 
 
 @dataclass
@@ -30,7 +30,7 @@ class ZippedNotes:
     duration: Sequence[int] = field(default_factory=lambda: [1000])
     gate: Sequence[float] = field(default_factory=lambda: [1.0])
     probability: Sequence[float] = field(default_factory=lambda: [1.0])
-    chan: Sequence[int] = field(default_factory=lambda: [0])
+    channel: Sequence[int] = field(default_factory=lambda: [0])
 
     def iter_events(self, ctx: ScoreContext) -> Iterable[NoteEvent]:
         for i in range(len(self.duration)):
@@ -39,8 +39,10 @@ class ZippedNotes:
             d = self.duration[i % len(self.duration)]
             g = self.gate[i % len(self.gate)]
             r = self.probability[i % len(self.probability)]
-            c = self.chan[i % len(self.chan)]
-            yield NoteEvent(pitch=p, velocity=v, start_ms=ctx.cursor_ms, duration_ms=d, gate=g, probability=r, chan=c)
+            c = self.channel[i % len(self.channel)]
+            yield NoteEvent(
+                pitch=p, velocity=v, start_ms=ctx.cursor_ms, duration_ms=d, gate=g, probability=r, channel=c
+            )
             ctx.cursor_ms += d
 
 
@@ -66,7 +68,7 @@ class Score:
         duration: Sequence[int] | None = None,
         gate: Sequence[float] | None = None,
         probability: Sequence[float] | None = None,
-        chan: Sequence[int] | None = None,
+        channel: Sequence[int] | None = None,
     ) -> None:
         if source:
             self._events.extend(source.iter_events(self._context))
@@ -78,7 +80,7 @@ class Score:
                 "duration": duration,
                 "gate": gate,
                 "probability": probability,
-                "chan": chan,
+                "channel": channel,
             }
             source = ZippedNotes(**{k: v for k, v in kwargs.items() if v is not None})  # type: ignore
             self._events.extend(source.iter_events(self._context))
@@ -89,8 +91,11 @@ class Score:
             self._sorted_by_start = sorted(self._events, key=lambda e: e.start_ms)
             self._dirty = False
 
-    def events_between(self, start_ms: int, end_ms: int) -> list[NoteEvent]:
+    def events_between(self, start_ms: int, end_ms: int | None = None) -> list[NoteEvent]:
         self._ensure_sorted()
+
+        if end_ms is None:
+            end_ms = max([e.start_ms for e in self._sorted_by_start])
 
         result = []
         for e in self._sorted_by_start:

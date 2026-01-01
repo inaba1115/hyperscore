@@ -1,5 +1,7 @@
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
+from .score import Score
+
 
 class MidiExporter:
     def __init__(
@@ -13,10 +15,11 @@ class MidiExporter:
 
     def export(
         self,
-        score,
+        score: Score,
         path: str,
         start_ms: int = 0,
         end_ms: int | None = None,
+        channel: int | None = None,  # AbletonLiveはchannel毎にファイルを分けう必要があるので
     ) -> None:
         midi = MidiFile(ticks_per_beat=self.ticks_per_beat)
         track = MidiTrack()
@@ -24,18 +27,17 @@ class MidiExporter:
 
         track.append(MetaMessage("set_tempo", tempo=self.tempo, time=0))
 
-        events = score.events_between(
-            start_ms,
-            end_ms if end_ms is not None else float("inf"),
-        )
+        events = score.events_between(start_ms, end_ms)
+        if channel is not None:
+            events = [e for e in events if e.channel == channel]
 
         midi_events = []
         for e in events:
             midi_events.append(
-                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.chan))
+                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
             )
             midi_events.append(
-                (e.start_ms + e.duration_ms, Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.chan))
+                (e.start_ms + e.duration_ms, Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel))
             )
 
         midi_events.sort(key=lambda x: x[0])

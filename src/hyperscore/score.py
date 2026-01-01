@@ -9,8 +9,8 @@ class NoteEvent:
     velocity: int
     start_ms: int
     duration_ms: int
-    gate: float
-    probability: float
+    gate: float  # TODO: impl
+    probability: float  # TODO: impl
     channel: int
 
 

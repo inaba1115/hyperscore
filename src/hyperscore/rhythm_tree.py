@@ -1,0 +1,2 @@
+class RhythmTree:
+    pass

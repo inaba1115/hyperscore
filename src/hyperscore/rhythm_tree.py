@@ -6,8 +6,6 @@ from fractions import Fraction
 
 from lark import Lark, Token, Transformer, v_args
 
-# TODO: repeatをrequenceに対して出来るようにしたほうが良いかも
-
 GRAMMAR = r"""
 start: sequence
 
@@ -125,7 +123,6 @@ def node_weight(node: Node) -> Fraction:
         return Fraction(node.value, 1)
 
     if isinstance(node, Group):
-        # Group 自身の weight は「外側に対する比率」
         return Fraction(node.weight, 1)
 
     raise TypeError(node)
@@ -141,7 +138,6 @@ def expand_sequence(seq: Sequence) -> list[Fraction]:
         share = w / total
 
         if isinstance(node, Group):
-            # Group 内部は再帰的に分割
             inner = expand_sequence(node.body)
             out.extend([share * d for d in inner])
         else:

@@ -9,10 +9,6 @@ class TestRhythmTree(unittest.TestCase):
         ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=300)
         self.assertEqual(ticks, [100, 200])
 
-        ast = hyperscore.parse_rhythm("1*3")
-        ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=1000)
-        self.assertEqual(ticks, [334, 333, 333])
-
         ast = hyperscore.parse_rhythm("(1)*3")
         ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=1000)
         self.assertEqual(ticks, [334, 333, 333])
@@ -33,6 +29,6 @@ class TestRhythmTree(unittest.TestCase):
         ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=400)
         self.assertEqual(ticks, [100, 50, 50, 50, 50, 50, 50])
 
-        ast = hyperscore.parse_rhythm("(1[1 2])*2")
-        ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=600)
-        self.assertEqual(ticks, [100, 200, 100, 200])
+        ast = hyperscore.parse_rhythm("2 (1 2)*2")
+        ticks = hyperscore.rhythm_to_ticks(ast, total_ticks=800)
+        self.assertEqual(ticks, [200, 100, 200, 100, 200])

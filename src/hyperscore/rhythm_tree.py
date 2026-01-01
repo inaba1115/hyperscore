@@ -6,14 +6,44 @@ from lark import Lark, Transformer
 
 
 @dataclass(frozen=True)
+class RhythmTree:
+    nodes: list
+
+    def expand(self, ms: int) -> list[int]:
+        ms_sum = ms
+        value_sum = 0
+        for n in self.nodes:
+            value_sum += n.value
+
+        ret = []
+        for i in range(len(self.nodes) - 1):
+            node = self.nodes[i]
+            assignment = int(ms * node.value / value_sum)
+            ret.extend(node.expand(assignment))
+            ms_sum -= assignment
+
+        node = self.nodes[-1]
+        assignment = ms_sum
+        ret.extend(node.expand(assignment))
+
+        return ret
+
+
+@dataclass(frozen=True)
 class Atom:
     value: int
+
+    def expand(self, ms: int) -> list[int]:
+        return [ms]
 
 
 @dataclass(frozen=True)
 class Children:
     value: int
-    children: list
+    nodes: RhythmTree
+
+    def expand(self, ms: int) -> list[int]:
+        return self.nodes.expand(ms)
 
 
 @dataclass(frozen=True)
@@ -21,10 +51,16 @@ class Division:
     value: int
     denominator: int
 
+    def expand(self, ms: int) -> list[int]:
+        unit = int(ms / self.denominator)
 
-@dataclass(frozen=True)
-class RhythmTree:
-    nodes: list
+        ret = []
+        for i in range(self.denominator - 1):
+            ret.append(unit)
+
+        ret.append(ms - unit * (self.denominator - 1))
+
+        return ret
 
 
 class RhythmTreeTransformer(Transformer):
@@ -69,3 +105,7 @@ if __name__ == "__main__":
     p = RhythmTreeParser()
     x = p.parse("1*2 1[2 3]*2 1/3*2")
     print(x)
+
+    y = p.parse("5 4 2 4 5")
+    print(y)
+    print(y.expand(1000))

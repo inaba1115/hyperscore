@@ -152,6 +152,14 @@ def intersection(xs: list[int], ys: list[int]) -> list[int]:
     return sorted(set(xs) | set(ys))
 
 
+def difference(xs: list[int], ys: list[int]) -> list[int]:
+    return sorted(set(xs) ^ set(ys))
+
+
+def unique(xs: list[int]) -> list[int]:
+    return sorted(set(xs))
+
+
 def jaccard_similarity(xs: list[int], ys: list[int]) -> float:
     return len(union(xs, ys)) / len(intersection(xs, ys))
 

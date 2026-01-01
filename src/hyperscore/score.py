@@ -16,7 +16,7 @@ class NoteEvent:
 
 @dataclass
 class ScoreContext:
-    current_tick: int
+    tick_cursor: int
 
 
 class ScoreInput(Protocol):
@@ -41,16 +41,22 @@ class ZippedNotes:
             r = self.probability[i % len(self.probability)]
             c = self.chan[i % len(self.chan)]
             yield NoteEvent(
-                pitch=p, velocity=v, start_tick=ctx.current_tick, duration_tick=d, gate=g, probability=r, chan=c
+                pitch=p, velocity=v, start_tick=ctx.tick_cursor, duration_tick=d, gate=g, probability=r, chan=c
             )
-            ctx.current_tick += d
+            ctx.tick_cursor += d
 
 
 class Score:
     def __init__(self, tick_rate: int = 1000):
         self._tick_rate = tick_rate
-        self._context: ScoreContext = ScoreContext(current_tick=0)
+        self._context: ScoreContext = ScoreContext(tick_cursor=0)
         self._events: list[NoteEvent] = []
+
+    def get_tick_cursor(self) -> int:
+        return self._context.tick_cursor
+
+    def set_tick_cursor(self, tick_cursor: int) -> None:
+        self._context.tick_cursor = tick_cursor
 
     def add(
         self,
@@ -77,14 +83,5 @@ class Score:
             source = ZippedNotes(**{k: v for k, v in kwargs.items() if v is not None})  # type: ignore
             self._events.extend(source.iter_events(self._context))
 
-
-if __name__ == "__main__":
-    # x = ZippedNotes(pitch=[1, 2, 3], duration=[3, 2, 1], gate=[1.0], probability=[1.0], chan=[0])
-    # x = ZippedNotes(pitch=[1, 2, 3], gate=[1.0], probability=[1.0], chan=[0])
-    # ctx = ScoreContext(0)
-    # xs = []
-    # xs.extend(x.iter_events(ctx))
-    # print(xs)
-    s = Score()
-    s.add(pitch=[1, 2, 3], duration=[2, 3, 4])
-    print(s._events)
+    def get_events(self) -> Iterable[NoteEvent]:
+        return sorted(self._events, key=lambda e: e.start_tick)

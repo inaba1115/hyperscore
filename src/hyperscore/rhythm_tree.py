@@ -6,26 +6,20 @@ from fractions import Fraction
 
 from lark import Lark, Token, Transformer, v_args
 
-# TODO: repeatをrequenceに対して出来るようにしたほうが良いかも
-
 GRAMMAR = r"""
 start: sequence
 
 sequence: element+
 
-?element: repeated
-        | simple
-
-repeated: simple "*" INT
-        | "(" simple ")" "*" INT
-
-?simple: atom
+?element: atom
        | group
        | division
+       | repeated
 
 atom: INT
 group: INT "[" sequence "]"
 division: INT "/" INT
+repeated: "(" sequence ")" "*" INT
 
 %import common.INT
 %import common.WS
@@ -39,20 +33,20 @@ class Atom:
 
 
 @dataclass(frozen=True)
-class Division:
-    num: int
-    den: int
-
-
-@dataclass(frozen=True)
 class Group:
     weight: int
     body: Sequence
 
 
 @dataclass(frozen=True)
-class Repeat:
-    node: Node
+class Division:
+    num: int
+    den: int
+
+
+@dataclass(frozen=True)
+class Repeated:
+    body: Sequence
     n: int
 
 
@@ -61,7 +55,7 @@ class Sequence:
     items: list[Node]
 
 
-Node = Atom | Division | Group | Repeat | Sequence
+Node = Atom | Group | Division | Repeated | Sequence
 
 
 @v_args(inline=True)
@@ -78,14 +72,14 @@ class RhythmTransformer(Transformer):
     def atom(self, value: int):
         return Atom(value)
 
-    def division(self, num: int, den: int):
-        return Division(num, den)
-
     def group(self, weight: int, body: Sequence):
         return Group(weight, body)
 
-    def repeated(self, node: Node, n: int):
-        return Repeat(node, n)
+    def division(self, num: int, den: int):
+        return Division(num, den)
+
+    def repeated(self, body: Sequence, n: int):
+        return Repeated(body, n)
 
 
 def parse_rhythm(text: str) -> Sequence:
@@ -97,15 +91,15 @@ def normalize(node: Node) -> Node:
     if isinstance(node, Atom):
         return node
 
-    if isinstance(node, Division):
-        return Group(node.num, Sequence([Atom(1) for _ in range(node.den)]))
-
     if isinstance(node, Group):
         return Group(node.weight, normalize_sequence(node.body))
 
-    if isinstance(node, Repeat):
-        expanded = [normalize(node.node) for _ in range(node.n)]
-        return Sequence(expanded)
+    if isinstance(node, Division):
+        return Group(node.num, Sequence([Atom(1) for _ in range(node.den)]))
+
+    if isinstance(node, Repeated):
+        expanded = [normalize_sequence(node.body) for _ in range(node.n)]
+        return normalize_sequence(Sequence(expanded))
 
     if isinstance(node, Sequence):
         return normalize_sequence(node)
@@ -128,11 +122,7 @@ def node_weight(node: Node) -> Fraction:
     if isinstance(node, Atom):
         return Fraction(node.value, 1)
 
-    # if isinstance(node, Division):
-    #     return Fraction(node.num, node.den)
-
     if isinstance(node, Group):
-        # Group 自身の weight は「外側に対する比率」
         return Fraction(node.weight, 1)
 
     raise TypeError(node)
@@ -148,7 +138,6 @@ def expand_sequence(seq: Sequence) -> list[Fraction]:
         share = w / total
 
         if isinstance(node, Group):
-            # Group 内部は再帰的に分割
             inner = expand_sequence(node.body)
             out.extend([share * d for d in inner])
         else:
@@ -188,4 +177,8 @@ def rhythm_to_ticks(
     assert isinstance(norm, Sequence)
 
     durations_frac = expand_sequence(norm)
-    return quantize_durations_to_ticks(durations_frac, total_ticks)
+    result = quantize_durations_to_ticks(durations_frac, total_ticks)
+    if min(result) < 1:
+        raise ValueError("total_ticks must be greater than or equal to total weight")
+
+    return result

@@ -177,4 +177,8 @@ def rhythm_to_ticks(
     assert isinstance(norm, Sequence)
 
     durations_frac = expand_sequence(norm)
-    return quantize_durations_to_ticks(durations_frac, total_ticks)
+    result = quantize_durations_to_ticks(durations_frac, total_ticks)
+    if min(result) < 1:
+        raise ValueError("total_ticks must be greater than or equal to total weight")
+
+    return result

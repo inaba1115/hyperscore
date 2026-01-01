@@ -6,6 +6,8 @@ from fractions import Fraction
 
 from lark import Lark, Token, Transformer, v_args
 
+# TODO: repeatをrequenceに対して出来るようにしたほうが良いかも
+
 GRAMMAR = r"""
 start: sequence
 

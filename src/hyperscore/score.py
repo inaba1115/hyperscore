@@ -91,7 +91,7 @@ class Score:
             self._sorted_by_start = sorted(self._events, key=lambda e: e.start_ms)
             self._dirty = False
 
-    def events_between(self, start_ms: int, end_ms: int | None = None) -> list[NoteEvent]:
+    def events_between(self, start_ms: int = 0, end_ms: int | None = None) -> list[NoteEvent]:
         self._ensure_sorted()
 
         if end_ms is None:

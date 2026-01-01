@@ -1,10 +1,17 @@
-start: (repeat | node)+
+start: sequence
 
-repeat: node "*" INT
+sequence: element+
+?element: repeated
+    | simple
 
-?node: atom | children | division
+repeated: simple "*" INT
+
+?simple: atom
+    | group
+    | division
+
 atom: INT
-children: INT "[" start "]"
+group: INT "[" sequence "]"
 division: INT "/" INT
 
 %import common.INT

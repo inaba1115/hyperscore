@@ -1,98 +1,130 @@
-import copy
+from __future__ import annotations
+
 from dataclasses import dataclass
-from pathlib import Path
 
-from lark import Lark, Transformer
+from lark import Lark, Token, Transformer, v_args
+
+GRAMMAR = r"""
+start: sequence
+
+sequence: element+
+
+?element: repeated
+        | simple
+
+repeated: simple "*" INT
+        | "(" simple ")" "*" INT -> repeat
+        
+
+?simple: atom
+       | group
+       | division
+
+atom: INT                     -> atom
+group: INT "[" sequence "]"   -> group
+division: INT "/" INT         -> division
+
+%import common.INT
+%import common.WS
+%ignore WS
+"""
 
 
 @dataclass(frozen=True)
-class RhythmNode:
-    weight: float
-
-    def expand(self, ms: int) -> list[int]:
-        raise NotImplementedError
+class Atom:
+    value: int
 
 
 @dataclass(frozen=True)
-class Atom(RhythmNode):
-    def expand(self, ms: int) -> list[int]:
-        return [ms]
+class Division:
+    num: int
+    den: int
 
 
 @dataclass(frozen=True)
-class Division(RhythmNode):
-    denominator: int
-
-    def expand(self, ms: int) -> list[int]:
-        unit = int(ms / self.denominator)
-        ret = [unit] * (self.denominator - 1)
-        ret.append(ms - unit * (self.denominator - 1))
-        return ret
+class Group:
+    weight: int
+    body: Sequence
 
 
 @dataclass(frozen=True)
-class RhythmTree(RhythmNode):
-    children: list[RhythmNode]
-
-    def expand(self, ms: int) -> list[int]:
-        # TODO: use largest remainder method and fraction
-
-        ms_tmp = ms
-        weight_sum = sum([n.weight for n in self.children])
-
-        ret = []
-        for n in self.children[:-1]:
-            assign_ms = int(ms * n.weight / weight_sum)
-            ret.extend(n.expand(assign_ms))
-            ms_tmp -= assign_ms
-
-        ret.extend(self.children[-1].expand(ms_tmp))
-        return ret
+class Repeat:
+    node: Node
+    n: int
 
 
-class RhythmTreeTransformer(Transformer):
-    def start(self, tree: list):
-        ret = []
-        for t in tree:
-            if isinstance(t, list):
-                ret.extend(t)
-            else:
-                ret.append(t)
-        return RhythmTree(1, ret)
-
-    def repeat(self, tree: list):
-        ret = []
-        for i in range(int(tree[1])):
-            ret.append(copy.deepcopy(tree[0]))
-        return ret
-
-    def atom(self, tree: list):
-        return Atom(int(tree[0]))
-
-    def children(self, tree: list):
-        return RhythmTree(int(tree[0]), tree[1])
-
-    def division(self, tree: list):
-        return Division(int(tree[0]), int(tree[1]))
+@dataclass(frozen=True)
+class Sequence:
+    items: list[Node]
 
 
-class RhythmTreeParser:
-    def __init__(self):
-        grammer_file = Path(__file__).resolve().parent.joinpath("rhythm_tree_grammer.lark")
-        with Path.open(grammer_file) as f:
-            self._parser = Lark(f)
-        self._transformer = RhythmTreeTransformer()
+Node = Atom | Division | Group | Repeat | Sequence
 
-    def parse(self, expr: str) -> RhythmTree:
-        tree = self._parser.parse(expr)
-        return self._transformer.transform(tree)
+
+@v_args(inline=True)
+class RhythmTransformer(Transformer):
+    def INT(self, tok: Token) -> int:
+        return int(tok)
+
+    def start(self, items):
+        return items
+
+    def sequence(self, *items):
+        return Sequence(list(items))
+
+    def atom(self, value: int):
+        return Atom(value)
+
+    def division(self, num: int, den: int):
+        return Division(num, den)
+
+    def group(self, weight: int, body: Sequence):
+        return Group(weight, body)
+
+    def repeat(self, node: Node, n: int):
+        return Repeat(node, n)
+
+
+def parse_rhythm(text: str) -> Sequence:
+    parser = Lark(GRAMMAR, parser="lalr", transformer=RhythmTransformer())
+    return parser.parse(text)  # type: ignore
+
+
+def normalize(node: Node) -> Node:
+    """Repeat を展開し、Sequence を平坦化する正規化。"""
+    if isinstance(node, (Atom, Division)):
+        return node
+
+    if isinstance(node, Group):
+        return Group(node.weight, normalize_sequence(node.body))
+
+    if isinstance(node, Repeat):
+        # Repeat(node, n) を Sequence に展開
+        expanded = [normalize(node.node) for _ in range(node.n)]
+        return Sequence(expanded)
+
+    if isinstance(node, Sequence):
+        return normalize_sequence(node)
+
+    raise TypeError(f"Unknown node: {node!r}")
+
+
+def normalize_sequence(seq: Sequence) -> Sequence:
+    out: list[Node] = []
+    for item in seq.items:
+        item_n = normalize(item)
+        # Sequence の入れ子を平坦化
+        if isinstance(item_n, Sequence):
+            out.extend(item_n.items)
+        else:
+            out.append(item_n)
+    return Sequence(out)
 
 
 if __name__ == "__main__":
-    p = RhythmTreeParser()
-    x = p.parse("1*2 1[2 3]*2 1/3*2")
-    print(x)
+    # ast = parse_rhythm("3 [ (1/2)*3 2 ] 5")
+    ast = parse_rhythm("3[1 2 3] 1")
+    print(ast)
 
-    y = p.parse("5 4 2 4 5")
-    print(y)
-    print(y.expand(1000))
+    norm = normalize(ast)
+    print(norm)

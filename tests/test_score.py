@@ -33,8 +33,7 @@ class TestScore(unittest.TestCase):
             pitch=[60, 62], velocity=[80, 100], duration=[100, 200], gate=[0.5], probability=[0.5], channel=[0, 1]
         )
         score = hyperscore.Score()
-        score.set_cursor(cursor_ms=500)
-        score.add(source)
+        score.place(source, start_ms=500)
         events = score.events_between()
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
@@ -54,9 +53,14 @@ class TestScore(unittest.TestCase):
 
     def test_add_sugar(self):
         score = hyperscore.Score()
-        score.set_cursor(cursor_ms=500)
-        score.add(
-            pitch=[60, 62], velocity=[80, 100], duration=[100, 200], gate=[0.5], probability=[0.5], channel=[0, 1]
+        score.place(
+            pitch=[60, 62],
+            velocity=[80, 100],
+            duration=[100, 200],
+            gate=[0.5],
+            probability=[0.5],
+            channel=[0, 1],
+            start_ms=500,
         )
         events = score.events_between()
         self.assertEqual(len(events), 2)

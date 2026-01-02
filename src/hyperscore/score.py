@@ -53,13 +53,13 @@ class Score:
         self._sorted_by_start: list[NoteEvent] = []
         self._dirty: bool = False
 
-    def get_cursor(self) -> int:
+    def get_cursor_ms(self) -> int:
         return self._context.cursor_ms
 
-    def set_cursor(self, cursor_ms: int) -> None:
+    def set_cursor_ms(self, cursor_ms: int) -> None:
         self._context.cursor_ms = cursor_ms
 
-    def add(
+    def place(
         self,
         source: ScoreInput | None = None,
         *,
@@ -69,7 +69,11 @@ class Score:
         gate: Sequence[float] | None = None,
         probability: Sequence[float] | None = None,
         channel: Sequence[int] | None = None,
+        start_ms: int | None = None,
     ) -> None:
+        if start_ms:
+            self._context.cursor_ms = start_ms
+
         if source:
             self._events.extend(source.iter_events(self._context))
             self._dirty = True

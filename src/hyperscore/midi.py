@@ -10,7 +10,7 @@ class MidiExporter:
     def __init__(
         self,
         *,
-        ticks_per_beat: int = 500,  # TODO: 1msを使うため500としているが、480として変換するのが良い
+        ticks_per_beat: int = 500,  # TODO: 1msを使うため500としているが、ここは480として変換するのが良い
         tempo: int = 500_000,
     ):
         self.ticks_per_beat = ticks_per_beat

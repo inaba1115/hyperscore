@@ -71,7 +71,7 @@ class Score:
     def set_cursor_ms(self, cursor_ms: int) -> None:
         self._context.cursor_ms = cursor_ms
 
-    def place(
+    def add(
         self,
         source: ScoreInput | None = None,
         *,

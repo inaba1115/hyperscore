@@ -182,7 +182,8 @@ def _normalize_sequence(seq: Sequence) -> Sequence:
 
 def node_weight(node) -> Fraction:
     """
-    ノードの「外側に対する重み」を返す
+    ノードの「外側に対する重み」を返す。
+    正規化後 AST(Atom / Group / Sequence のみ)を想定。
     """
     if isinstance(node, Atom):
         return node.value
@@ -190,7 +191,14 @@ def node_weight(node) -> Fraction:
     if isinstance(node, Group):
         return node.weight.value
 
-    raise TypeError(f"Unsupported node for weight: {node!r}")
+    if isinstance(node, Sequence):
+        # Sequence の重み = 子ノードの重みの総和
+        total = sum(node_weight(child) for child in node.items)
+        if total == 0:
+            raise ValueError("Sequence weight must be non-zero")
+        return total
+
+    raise TypeError(f"Unsupported node type: {node!r}")
 
 
 def expand_sequence(seq: Sequence) -> list[Fraction]:
@@ -216,6 +224,10 @@ def expand_sequence(seq: Sequence) -> list[Fraction]:
         elif isinstance(node, Group):
             # 再帰的に内部を分割
             inner = expand_sequence(node.body)
+            durations.extend([share * d for d in inner])
+
+        elif isinstance(node, Sequence):
+            inner = expand_sequence(node)
             durations.extend([share * d for d in inner])
 
         else:

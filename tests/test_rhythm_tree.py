@@ -109,6 +109,11 @@ class TestRhythmTree(unittest.TestCase):
         ticks = rhythm_ast_to_ticks(ast, total_ticks=900)
         self.assertEqual(ticks, [300, 300, 300])
 
+    def test_ticks_repeat_sequence(self):
+        ast = parse_rhythm("(1 2)*3")
+        ticks = rhythm_ast_to_ticks(ast, total_ticks=900)
+        self.assertEqual(ticks, [100, 200, 100, 200, 100, 200])
+
     def test_ticks_split_repeat_combo(self):
         ast = parse_rhythm("1%3*2")
         ticks = rhythm_ast_to_ticks(ast, total_ticks=1200)

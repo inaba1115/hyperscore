@@ -19,7 +19,7 @@ class MidiExporter:
         path: str,
         start_ms: int = 0,
         end_ms: int | None = None,
-        channel: int | None = None,  # AbletonLiveはchannel毎にファイルを分けう必要があるので
+        channel: int | None = None,  # AbletonLiveはchannel毎にファイルを分ける必要があるので
     ) -> None:
         midi = MidiFile(ticks_per_beat=self.ticks_per_beat)
         track = MidiTrack()

@@ -33,7 +33,18 @@ class ZippedNotes:
     channel: Sequence[int] = field(default_factory=lambda: [0])
 
     def iter_events(self, ctx: ScoreContext) -> Iterable[NoteEvent]:
-        for i in range(len(self.duration)):
+        max_len = max(
+            [
+                len(self.pitch),
+                len(self.velocity),
+                len(self.duration),
+                len(self.gate),
+                len(self.probability),
+                len(self.channel),
+            ]
+        )
+
+        for i in range(max_len):
             p = self.pitch[i % len(self.pitch)]
             v = self.velocity[i % len(self.velocity)]
             d = self.duration[i % len(self.duration)]

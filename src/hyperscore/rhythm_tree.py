@@ -299,25 +299,3 @@ def rhythm_ast_to_ticks(
 
     durations_frac = expand_to_fractions(norm)
     return quantize_fractions_to_ticks(durations_frac, total_ticks)
-
-
-if __name__ == "__main__":
-    # ast = parse_rhythm("1/2 %3 *2")
-    # ast = parse_rhythm("1[1 1 1] 3")
-    # print(ast)
-
-    # norm = normalize(ast)
-    # assert isinstance(norm, Sequence)
-    # print(norm)
-
-    # durations = expand_to_fractions(norm)
-    # print(durations)
-    # print(sum(durations))
-
-    # ticks = quantize_fractions_to_ticks(durations, total_ticks=1000)
-    # starts = durations_to_start_ticks(ticks)
-    # print(ticks, starts)
-
-    ast = parse_rhythm("1/2 %3 *2")
-    ticks = rhythm_ast_to_ticks(ast, total_ticks=1000)
-    print(ticks)

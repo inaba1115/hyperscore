@@ -32,8 +32,8 @@ class ZippedNotes:
     probability: Sequence[float] = field(default_factory=lambda: [1.0])
     channel: Sequence[int] = field(default_factory=lambda: [0])
 
-    def iter_events(self, ctx: ScoreContext) -> Iterable[NoteEvent]:
-        max_len = max(
+    def _max_len(self) -> int:
+        return max(
             [
                 len(self.pitch),
                 len(self.velocity),
@@ -44,7 +44,8 @@ class ZippedNotes:
             ]
         )
 
-        for i in range(max_len):
+    def iter_events(self, ctx: ScoreContext) -> Iterable[NoteEvent]:
+        for i in range(self._max_len()):
             p = self.pitch[i % len(self.pitch)]
             v = self.velocity[i % len(self.velocity)]
             d = self.duration[i % len(self.duration)]

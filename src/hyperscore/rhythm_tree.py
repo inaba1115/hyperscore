@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence as Seq
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -9,45 +8,51 @@ from lark import Lark, Token, Transformer, v_args
 GRAMMAR = r"""
 start: sequence
 
-sequence: element+
+sequence: expr+                       -> sequence
 
-?element: atom
-       | group
-       | division
-       | repeated
+?expr: primary postfix*               -> apply_postfix
 
-atom: INT
-group: INT "[" sequence "]"
-division: INT "/" INT
-repeated: "(" sequence ")" "*" INT
+postfix: "*" INT                      -> repeat_op
+       | "%" INT                      -> split_op
+
+?primary: group
+        | atom
+        | "(" sequence ")"            -> parens
+
+group: atom "[" sequence "]"          -> group
+
+atom: INT "/" INT                     -> fraction
+    | INT                             -> integer
 
 %import common.INT
 %import common.WS
 %ignore WS
 """
 
+# ---------- AST Nodes ----------
+
 
 @dataclass(frozen=True)
 class Atom:
-    value: int
+    value: Fraction
 
 
 @dataclass(frozen=True)
 class Group:
-    weight: int
+    weight: Atom
     body: Sequence
 
 
 @dataclass(frozen=True)
-class Division:
-    num: int
-    den: int
+class Repeat:
+    node: Node
+    times: int
 
 
 @dataclass(frozen=True)
-class Repeated:
-    body: Sequence
-    n: int
+class Split:
+    node: Node
+    parts: int
 
 
 @dataclass(frozen=True)
@@ -55,120 +60,236 @@ class Sequence:
     items: list[Node]
 
 
-Node = Atom | Group | Division | Repeated | Sequence
+Node = Atom | Group | Repeat | Split | Sequence
 
 
 @v_args(inline=True)
 class RhythmTransformer(Transformer):
+    # ----------- terminals -----------
+
     def INT(self, tok: Token) -> int:
         return int(tok)
 
-    def start(self, items):
-        return items
+    # ----------- structure -----------
 
-    def sequence(self, *items):
+    def start(self, seq: Sequence):
+        return seq
+
+    def sequence(self, *items: Node):
         return Sequence(list(items))
 
-    def atom(self, value: int):
-        return Atom(value)
+    def parens(self, seq: Sequence):
+        return seq
 
-    def group(self, weight: int, body: Sequence):
-        return Group(weight, body)
+    # ----------- atom -----------
 
-    def division(self, num: int, den: int):
-        return Division(num, den)
+    def integer(self, value: int):
+        return Atom(Fraction(value, 1))
 
-    def repeated(self, body: Sequence, n: int):
-        return Repeated(body, n)
+    def fraction(self, num: int, den: int):
+        return Atom(Fraction(num, den))
+
+    # ----------- group -----------
+
+    def group(self, weight: Atom, body: Sequence):
+        return Group(weight=weight, body=body)
+
+    # ----------- postfix ops -----------
+
+    def repeat_op(self, times: int):
+        return ("repeat", times)
+
+    def split_op(self, parts: int):
+        return ("split", parts)
+
+    # ----------- postfix application -----------
+
+    def apply_postfix(self, base: Node, *ops):
+        node = base
+        for op in ops:
+            kind, n = op
+            if kind == "repeat":
+                node = Repeat(node=node, times=n)
+            elif kind == "split":
+                node = Split(node=node, parts=n)
+            else:
+                raise ValueError(op)
+        return node
 
 
 def parse_rhythm(text: str) -> Sequence:
-    parser = Lark(GRAMMAR, parser="lalr", transformer=RhythmTransformer())
-    return parser.parse(text)  # type: ignore
+    parser = Lark(
+        GRAMMAR,
+        parser="lalr",
+        transformer=RhythmTransformer(),
+    )
+
+    ast = parser.parse(text)
+    assert isinstance(ast, Sequence)
+
+    return ast
 
 
 def normalize(node: Node) -> Node:
+    """
+    Split / Repeat を消去し、
+    Atom / Group / Sequence のみからなる正規形 AST を返す
+    """
     if isinstance(node, Atom):
         return node
 
-    if isinstance(node, Group):
-        return Group(node.weight, normalize_sequence(node.body))
-
-    if isinstance(node, Division):
-        return Group(node.num, Sequence([Atom(1) for _ in range(node.den)]))
-
-    if isinstance(node, Repeated):
-        expanded = [normalize_sequence(node.body) for _ in range(node.n)]
-        return normalize_sequence(Sequence(expanded))
-
     if isinstance(node, Sequence):
-        return normalize_sequence(node)
+        return _normalize_sequence(node)
+
+    if isinstance(node, Group):
+        return Group(
+            weight=node.weight,
+            body=_normalize_sequence(node.body),
+        )
+
+    if isinstance(node, Split):
+        # x % n  →  x[1 1 ... 1]
+        base = normalize(node.node)
+        if not isinstance(base, Atom):
+            raise TypeError("Split base must normalize to Atom")
+        ones = [Atom(Fraction(1, 1)) for _ in range(node.parts)]
+        return Group(
+            weight=base,
+            body=Sequence(ones),
+        )
+
+    if isinstance(node, Repeat):
+        # x * n  →  x x ... x
+        base = normalize(node.node)
+        return Sequence([base for _ in range(node.times)])
 
     raise TypeError(f"Unknown node: {node!r}")
 
 
-def normalize_sequence(seq: Sequence) -> Sequence:
-    out: list[Node] = []
+def _normalize_sequence(seq: Sequence) -> Sequence:
+    items: list[Node] = []
     for item in seq.items:
-        item_n = normalize(item)
-        if isinstance(item_n, Sequence):
-            out.extend(item_n.items)
+        n = normalize(item)
+
+        # Repeat の結果などで Sequence が入れ子になるので平坦化
+        if isinstance(n, Sequence):
+            items.extend(n.items)
         else:
-            out.append(item_n)
-    return Sequence(out)
+            items.append(n)
+
+    return Sequence(items)
 
 
-def node_weight(node: Node) -> Fraction:
+def node_weight(node) -> Fraction:
+    """
+    ノードの「外側に対する重み」を返す
+    """
     if isinstance(node, Atom):
-        return Fraction(node.value, 1)
+        return node.value
 
     if isinstance(node, Group):
-        return Fraction(node.weight, 1)
+        return node.weight.value
 
-    raise TypeError(node)
+    raise TypeError(f"Unsupported node for weight: {node!r}")
 
 
 def expand_sequence(seq: Sequence) -> list[Fraction]:
+    """
+    Sequence を相対 duration(Fraction, 合計=1)に展開する
+    """
+    # 各要素の外側重み
     weights = [node_weight(n) for n in seq.items]
     total = sum(weights)
 
-    out: list[Fraction] = []
+    if total == 0:
+        raise ValueError("Total weight must be non-zero")
+
+    durations: list[Fraction] = []
 
     for node, w in zip(seq.items, weights):
-        share = w / total
+        share = w / total  # このノードに割り当てられる全体比率
 
-        if isinstance(node, Group):
+        if isinstance(node, Atom):
+            # 葉: そのまま 1 音分
+            durations.append(share)
+
+        elif isinstance(node, Group):
+            # 再帰的に内部を分割
             inner = expand_sequence(node.body)
-            out.extend([share * d for d in inner])
+            durations.extend([share * d for d in inner])
+
         else:
-            out.append(share)
+            raise TypeError(f"Unexpected node type: {node!r}")
 
-    return out
+    return durations
 
 
-def quantize_durations_to_ticks(
-    durations: Seq[Fraction],
+def expand_to_fractions(ast: Sequence) -> list[Fraction]:
+    """
+    正規化済み AST(Sequence)から
+    Fraction duration 列(合計=1)を生成
+    """
+    durations = expand_sequence(ast)
+
+    # 安全チェック(デバッグ用)
+    if sum(durations) != Fraction(1, 1):
+        raise AssertionError("Duration sum is not 1")
+
+    return durations
+
+
+def quantize_fractions_to_ticks(
+    durations: Sequence[Fraction],
     total_ticks: int,
 ) -> list[int]:
+    """
+    Fraction duration 列(合計=1)を tick(ms) に量子化する。
+    - 合計 tick は必ず total_ticks
+    - largest remainder method 使用
+    """
+    if total_ticks <= 0:
+        raise ValueError("total_ticks must be positive")
+
+    if sum(durations) != Fraction(1, 1):
+        raise ValueError("durations must sum to 1")
+
+    # 理想 tick(Fraction)
     ideal = [d * total_ticks for d in durations]
+
+    # 切り捨て(floor)
     base = [int(x) for x in ideal]
 
+    # 残り tick
     remaining = total_ticks - sum(base)
+    if remaining < 0:
+        raise AssertionError("Negative remaining ticks")
 
-    remainders = sorted(
-        enumerate([i - b for i, b in zip(ideal, base)]),
-        key=lambda x: x[1],
-        reverse=True,
-    )
+    # 小数部(剰余)を計算
+    remainders = [(i, ideal[i] - base[i]) for i in range(len(ideal))]
 
-    for i in range(remaining):
-        idx, _ = remainders[i]
+    # 剰余が大きい順に +1 を配分
+    remainders.sort(key=lambda x: x[1], reverse=True)
+
+    for k in range(remaining):
+        idx, _ = remainders[k]
         base[idx] += 1
 
     return base
 
 
-def rhythm_to_ticks(
+def durations_to_start_ticks(durations_tick: Sequence[int]) -> list[int]:
+    """
+    duration tick 列から start_tick 列を生成
+    """
+    t = 0
+    starts = []
+    for d in durations_tick:
+        starts.append(t)
+        t += d
+    return starts
+
+
+def rhythm_ast_to_ticks(
     ast: Sequence,
     *,
     total_ticks: int,
@@ -176,9 +297,5 @@ def rhythm_to_ticks(
     norm = normalize(ast)
     assert isinstance(norm, Sequence)
 
-    durations_frac = expand_sequence(norm)
-    result = quantize_durations_to_ticks(durations_frac, total_ticks)
-    if min(result) < 1:
-        raise ValueError("total_ticks must be greater than or equal to total weight")
-
-    return result
+    durations_frac = expand_to_fractions(norm)
+    return quantize_fractions_to_ticks(durations_frac, total_ticks)

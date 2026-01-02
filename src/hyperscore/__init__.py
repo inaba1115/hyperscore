@@ -1,5 +1,5 @@
 from .midi import MidiExporter, MidiPlayer
-from .rhythm_tree import parse_rhythm, rhythm_to_ticks
+from .rhythm_tree import durations_to_start_ticks, parse_rhythm, rhythm_ast_to_ticks
 from .scales import (
     CHORDS,
     SCALES,
@@ -27,10 +27,12 @@ __all__ = [
     "bpm_to_ms",
     "dice_similarity",
     "difference",
+    "durations_to_start_ticks",
     "intersection",
     "jaccard_similarity",
     "overlap_similarity",
     "parse_rhythm",
+    "rhythm_ast_to_ticks",
     "rhythm_to_ticks",
     "union",
     "unique",

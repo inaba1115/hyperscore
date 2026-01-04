@@ -12,7 +12,7 @@ from .scales import (
     unique,
 )
 from .score import NoteEvent, Score, ScoreContext, ScoreInput, ZippedNotes
-from .tempo import bpm_to_ms_note
+from .tempo import bpm_to_ms
 
 __all__ = [
     "CHORDS",
@@ -24,7 +24,7 @@ __all__ = [
     "ScoreContext",
     "ScoreInput",
     "ZippedNotes",
-    "bpm_to_ms_note",
+    "bpm_to_ms",
     "dice_similarity",
     "difference",
     "durations_to_start_ticks",

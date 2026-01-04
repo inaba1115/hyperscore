@@ -1,4 +1,4 @@
-def bpm_to_ms_note(bpm: float, note_division: float = 1.0) -> float:
+def bpm_to_ms(bpm: float, note_division: float = 1.0) -> float:
     """
     BPM -> milliseconds for a note length
 

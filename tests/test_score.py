@@ -4,6 +4,16 @@ import hyperscore
 
 
 class TestZippedNotes(unittest.TestCase):
+    def test_max_len(self):
+        source = hyperscore.ZippedNotes()
+        self.assertEqual(source._max_len(), 1)
+
+        source = hyperscore.ZippedNotes(pitch=[1, 2])
+        self.assertEqual(source._max_len(), 2)
+
+        source = hyperscore.ZippedNotes(velocity=[1, 2, 3])
+        self.assertEqual(source._max_len(), 3)
+
     def test_iter_events(self):
         source = hyperscore.ZippedNotes(
             pitch=[60, 62], velocity=[80, 100], duration=[100, 200], gate=[0.5], probability=[0.5], channel=[0, 1]

@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Protocol
 
 
@@ -33,16 +33,7 @@ class ZippedNotes:
     channel: Sequence[int] = field(default_factory=lambda: [0])
 
     def _max_len(self) -> int:
-        return max(
-            [
-                len(self.pitch),
-                len(self.velocity),
-                len(self.duration),
-                len(self.gate),
-                len(self.probability),
-                len(self.channel),
-            ]
-        )
+        return max([len(getattr(self, f.name)) for f in fields(self)])
 
     def iter_events(self, ctx: ScoreContext) -> Iterable[NoteEvent]:
         for i in range(self._max_len()):

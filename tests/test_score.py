@@ -16,7 +16,13 @@ class TestZippedNotes(unittest.TestCase):
 
     def test_iter_events(self):
         source = hyperscore.ZippedNotes(
-            pitch=[60, 62], velocity=[80, 100], duration=[100, 200], gate=[0.5], probability=[0.5], channel=[0, 1]
+            pitch=[60, 62],
+            velocity=[80, 100],
+            duration=[100, 200],
+            gate=[0.5],
+            probability=[0.5],
+            channel=[0, 1],
+            event_factory=hyperscore.NoteEvent,
         )
         context = hyperscore.ScoreContext(cursor_ms=500)
         events = list(source.iter_events(context))
@@ -40,7 +46,13 @@ class TestZippedNotes(unittest.TestCase):
 class TestScore(unittest.TestCase):
     def test_add_source(self):
         source = hyperscore.ZippedNotes(
-            pitch=[60, 62], velocity=[80, 100], duration=[100, 200], gate=[0.5], probability=[0.5], channel=[0, 1]
+            pitch=[60, 62],
+            velocity=[80, 100],
+            duration=[100, 200],
+            gate=[0.5],
+            probability=[0.5],
+            channel=[0, 1],
+            event_factory=hyperscore.NoteEvent,
         )
         score = hyperscore.Score()
         score.add(source, start_ms=500)
@@ -71,6 +83,7 @@ class TestScore(unittest.TestCase):
             probability=[0.5],
             channel=[0, 1],
             start_ms=500,
+            event_factory=hyperscore.NoteEvent,
         )
         events = score.events_between()
         self.assertEqual(len(events), 2)

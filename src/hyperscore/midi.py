@@ -1,9 +1,41 @@
 import time
+from collections.abc import Iterable
 
 import mido
+import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
-from .score import Score
+from .score import NoteEvent, Score
+
+
+def convert_to_midi_events(
+    start_ms: int,
+    events: Iterable[NoteEvent],
+    rng: np.random.Generator | None = None,
+) -> list[tuple[int, Message]]:
+    rng = rng if rng else np.random.default_rng()
+
+    midi_events = []
+    for e in events:
+        if e.probability > rng.uniform():
+            midi_events.append(
+                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
+            )
+            midi_events.append(
+                (
+                    e.start_ms + int(e.duration_ms * e.gate),
+                    Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel),
+                )
+            )
+
+    midi_events.sort(key=lambda x: x[0])
+
+    last_tick = start_ms
+    for tick, msg in midi_events:
+        msg.time = tick - last_tick
+        last_tick = tick
+
+    return midi_events
 
 
 class MidiExporter:
@@ -12,9 +44,11 @@ class MidiExporter:
         *,
         ticks_per_beat: int = 500,  # TODO: Score側を1ms基準とするため500としているが、ここは480として変換するのが設計的に良い
         tempo: int = 500_000,
+        rng: np.random.Generator | None = None,
     ):
         self.ticks_per_beat = ticks_per_beat
         self.tempo = tempo
+        self.rng = rng if rng else np.random.default_rng()
 
     def export(
         self,
@@ -34,59 +68,29 @@ class MidiExporter:
         if channel is not None:
             events = [e for e in events if e.channel == channel]
 
-        midi_events = []
-        for e in events:
-            midi_events.append(
-                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
-            )
-            midi_events.append(
-                (e.start_ms + e.duration_ms, Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel))
-            )
-
-        midi_events.sort(key=lambda x: x[0])
-
-        last_tick = start_ms
-        for tick, msg in midi_events:
-            msg.time = tick - last_tick
+        midi_events = convert_to_midi_events(start_ms, events, self.rng)
+        for _, msg in midi_events:
             track.append(msg)
-            last_tick = tick
 
         midi.save(path)
 
 
 class MidiPlayer:
-    def __init__(self, *, output: mido.ports.BaseOutput):
+    def __init__(self, *, output: mido.ports.BaseOutput, rng: np.random.Generator | None = None):
         self.output = output
+        self.rng = rng if rng else np.random.default_rng()
 
-    def play(
-        self,
-        score: Score,
-        start_ms: int = 0,
-        end_ms: int | None = None,
-    ) -> None:
+    def play(self, score: Score, start_ms: int = 0, end_ms: int | None = None) -> None:
         events = score.events_between(start_ms, end_ms)
-
-        midi_events = []
-        for e in events:
-            midi_events.append(
-                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
-            )
-            midi_events.append(
-                (e.start_ms + e.duration_ms, Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel))
-            )
-
-        midi_events.sort(key=lambda x: x[0])
-
-        last_tick = start_ms
-        for tick, msg in midi_events:
-            msg.time = tick - last_tick
-            last_tick = tick
+        midi_events = convert_to_midi_events(start_ms, events, self.rng)
 
         with mido.open_output(self.output, autoreset=True) as outport:  # type: ignore
-            now = time.time()
-            for tick, msg in midi_events:
-                now += msg.time * 0.001  # ms to sec
-                dt = now - time.time()
-                if dt > 0:
-                    time.sleep(dt)
+            logical_time = time.time()
+            for _, msg in midi_events:
+                logical_time += msg.time * 0.001  # type: ignore
+
+                delta_time = logical_time - time.time()
+                if delta_time > 0:
+                    time.sleep(delta_time)
+
                 outport.send(msg)

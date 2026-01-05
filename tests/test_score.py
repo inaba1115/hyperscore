@@ -25,7 +25,8 @@ class TestZippedNotes(unittest.TestCase):
             event_factory=NoteEvent,
         )
         context = ScoreContext(cursor_ms=500)
-        events = list(source.iter_events(context))
+        events, _ = source.iter_events(context)
+        events = list(events)
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
         self.assertEqual(events[0].velocity, 80)

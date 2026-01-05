@@ -9,7 +9,7 @@ from hyperscore.score import NoteEvent, ScoreContext, ZippedNotes
 class TestMidi(unittest.TestCase):
     def test_convert_to_midi_events(self):
         context = ScoreContext(cursor_ms=0)
-        events = ZippedNotes(pitch=[1, 2], duration=[100, 200], event_factory=NoteEvent).iter_events(context)
+        events, _ = ZippedNotes(pitch=[1, 2], duration=[100, 200], event_factory=NoteEvent).iter_events(context)
         midi_events = convert_to_midi_events(events, 0)
 
         self.assertEqual(len(midi_events), 4)

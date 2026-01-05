@@ -9,8 +9,8 @@ from .score import NoteEvent, Score
 
 
 def convert_to_midi_events(
-    start_ms: int,
     events: Iterable[NoteEvent],
+    start_ms: int,
     rng: np.random.Generator | None = None,
 ) -> list[tuple[int, Message]]:
     rng = rng if rng else np.random.default_rng()
@@ -68,7 +68,7 @@ class MidiExporter:
         if channel is not None:
             events = [e for e in events if e.channel == channel]
 
-        midi_events = convert_to_midi_events(start_ms, events, self.rng)
+        midi_events = convert_to_midi_events(events, start_ms, self.rng)
         for _, msg in midi_events:
             track.append(msg)
 
@@ -82,7 +82,7 @@ class MidiPlayer:
 
     def play(self, score: Score, start_ms: int = 0, end_ms: int | None = None) -> None:
         events = score.events_between(start_ms, end_ms)
-        midi_events = convert_to_midi_events(start_ms, events, self.rng)
+        midi_events = convert_to_midi_events(events, start_ms, self.rng)
 
         with mido.open_output(self.output, autoreset=True) as outport:  # type: ignore
             logical_time = time.time()

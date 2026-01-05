@@ -10,7 +10,7 @@ class TestMidi(unittest.TestCase):
     def test_convert_to_midi_events(self):
         context = ScoreContext(cursor_ms=0)
         events = ZippedNotes(pitch=[1, 2], duration=[100, 200]).iter_events(context)
-        midi_events = convert_to_midi_events(0, events)
+        midi_events = convert_to_midi_events(events, 0)
 
         self.assertEqual(len(midi_events), 4)
         self.assertEqual(midi_events[0], (0, Message("note_on", channel=0, note=1, velocity=100, time=0)))

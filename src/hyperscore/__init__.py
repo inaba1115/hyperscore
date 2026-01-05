@@ -1,10 +1,10 @@
 from .midi import MidiExporter, MidiPlayer
+from .pcset import PitchClass, PitchClassSet
 from .rhythm_tree import durations_to_start_ticks, parse_rhythm, rhythm_ast_to_ticks
 from .scales import (
     CHORDS,
     SCALES,
     Chord,
-    PitchClassSet,
     Scale,
 )
 from .score import NoteEvent, Score, ScoreContext, ScoreInput, ZippedNotes
@@ -17,6 +17,7 @@ __all__ = [
     "MidiExporter",
     "MidiPlayer",
     "NoteEvent",
+    "PitchClass",
     "PitchClassSet",
     "Scale",
     "Score",

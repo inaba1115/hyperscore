@@ -1,6 +1,6 @@
 import unittest
 
-from hyperscore.scales import PitchClassSet
+from hyperscore.pcset import PitchClassSet
 
 
 class TestPitchClassSet(unittest.TestCase):

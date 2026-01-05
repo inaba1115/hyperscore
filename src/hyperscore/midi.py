@@ -15,18 +15,19 @@ def convert_to_midi_events(
 ) -> list[tuple[int, Message]]:
     rng = rng if rng else np.random.default_rng()
 
+    prob_events = [e for e in events if e.probability > rng.uniform()]
+
     midi_events = []
-    for e in events:
-        if e.probability > rng.uniform():
-            midi_events.append(
-                (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
+    for e in prob_events:
+        midi_events.append(
+            (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
+        )
+        midi_events.append(
+            (
+                e.start_ms + int(e.duration_ms * e.gate),
+                Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel),
             )
-            midi_events.append(
-                (
-                    e.start_ms + int(e.duration_ms * e.gate),
-                    Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel),
-                )
-            )
+        )
 
     midi_events.sort(key=lambda x: x[0])
 

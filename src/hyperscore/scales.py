@@ -145,11 +145,11 @@ CHORDS = collections.OrderedDict(
 
 
 def union(xs: list[int], ys: list[int]) -> list[int]:
-    return sorted(set(xs) & set(ys))
+    return sorted(set(xs) | set(ys))
 
 
 def intersection(xs: list[int], ys: list[int]) -> list[int]:
-    return sorted(set(xs) | set(ys))
+    return sorted(set(xs) & set(ys))
 
 
 def difference(xs: list[int], ys: list[int]) -> list[int]:
@@ -161,12 +161,12 @@ def unique(xs: list[int]) -> list[int]:
 
 
 def jaccard_similarity(xs: list[int], ys: list[int]) -> float:
-    return len(union(xs, ys)) / len(intersection(xs, ys))
+    return len(intersection(xs, ys)) / len(union(xs, ys))
 
 
 def dice_similarity(xs: list[int], ys: list[int]) -> float:
-    return 2 * len(union(xs, ys)) / (len(xs) + len(ys))
+    return 2 * len(intersection(xs, ys)) / (len(xs) + len(ys))
 
 
 def overlap_similarity(xs: list[int], ys: list[int]) -> float:
-    return len(union(xs, ys)) / min(len(xs), len(ys))
+    return len(intersection(xs, ys)) / min(len(xs), len(ys))

@@ -1,30 +1,30 @@
 import unittest
 
-import hyperscore
+from hyperscore.score import NoteEvent, Score, ScoreContext, ZippedNotes
 
 
 class TestZippedNotes(unittest.TestCase):
     def test_max_len(self):
-        source = hyperscore.ZippedNotes()
+        source = ZippedNotes()
         self.assertEqual(source._max_len(), 1)
 
-        source = hyperscore.ZippedNotes(pitch=[1, 2])
+        source = ZippedNotes(pitch=[1, 2])
         self.assertEqual(source._max_len(), 2)
 
-        source = hyperscore.ZippedNotes(velocity=[1, 2, 3])
+        source = ZippedNotes(velocity=[1, 2, 3])
         self.assertEqual(source._max_len(), 3)
 
     def test_iter_events(self):
-        source = hyperscore.ZippedNotes(
+        source = ZippedNotes(
             pitch=[60, 62],
             velocity=[80, 100],
             duration=[100, 200],
             gate=[0.5],
             probability=[0.5],
             channel=[0, 1],
-            event_factory=hyperscore.NoteEvent,
+            event_factory=NoteEvent,
         )
-        context = hyperscore.ScoreContext(cursor_ms=500)
+        context = ScoreContext(cursor_ms=500)
         events = list(source.iter_events(context))
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
@@ -45,16 +45,16 @@ class TestZippedNotes(unittest.TestCase):
 
 class TestScore(unittest.TestCase):
     def test_add_source(self):
-        source = hyperscore.ZippedNotes(
+        source = ZippedNotes(
             pitch=[60, 62],
             velocity=[80, 100],
             duration=[100, 200],
             gate=[0.5],
             probability=[0.5],
             channel=[0, 1],
-            event_factory=hyperscore.NoteEvent,
+            event_factory=NoteEvent,
         )
-        score = hyperscore.Score()
+        score = Score()
         score.add(source, start_ms=500)
         events = score.events_between()
         self.assertEqual(len(events), 2)
@@ -74,7 +74,7 @@ class TestScore(unittest.TestCase):
         self.assertEqual(events[1].channel, 1)
 
     def test_add_sugar(self):
-        score = hyperscore.Score()
+        score = Score()
         score.add(
             pitch=[60, 62],
             velocity=[80, 100],
@@ -83,7 +83,7 @@ class TestScore(unittest.TestCase):
             probability=[0.5],
             channel=[0, 1],
             start_ms=500,
-            event_factory=hyperscore.NoteEvent,
+            event_factory=NoteEvent,
         )
         events = score.events_between()
         self.assertEqual(len(events), 2)

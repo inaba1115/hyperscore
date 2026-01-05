@@ -2,27 +2,92 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .pcset import PitchClassSet
+from .pcset import PitchClass, PitchClassSet
 
 # ============================================================
-# Scale / Chord value objects
+# Value objects
 # ============================================================
 
 
 @dataclass(frozen=True)
 class Scale:
+    """
+    Musical scale as a pitch-class set (orderless).
+    """
+
     name: str
     pcs: PitchClassSet
+
+    def transpose(self, n: int, *, name: str | None = None) -> Scale:
+        new_name = name if name is not None else f"{self.name}_+{n}"
+        return Scale(new_name, self.pcs.transpose(n))
 
 
 @dataclass(frozen=True)
 class Chord:
+    """
+    Chord defined by pitch-class intervals.
+    """
+
     name: str
     intervals: PitchClassSet
 
 
 # ============================================================
-# Scale definitions
+# Ordered scale (for mode rotation etc.)
+# ============================================================
+
+
+@dataclass(frozen=True)
+class ScaleOrdered:
+    """
+    Ordered pitch-class sequence.
+    Used for modes, melodic generation, etc.
+    """
+
+    name: str
+    pcs: tuple[PitchClass, ...]
+
+    def transpose(self, n: int, *, name: str | None = None) -> ScaleOrdered:
+        new_name = name if name is not None else f"{self.name}_+{n}"
+        return ScaleOrdered(new_name, tuple((pc + n) % 12 for pc in self.pcs))
+
+    def rotate_mode(self, k: int, *, name: str | None = None) -> ScaleOrdered:
+        if not self.pcs:
+            return self
+        k = k % len(self.pcs)
+        rotated = self.pcs[k:] + self.pcs[:k]
+        new_name = name if name is not None else f"{self.name}_mode{k + 1}"
+        return ScaleOrdered(new_name, rotated)
+
+    def normalize_to_zero(self) -> ScaleOrdered:
+        if not self.pcs:
+            return self
+        root = self.pcs[0]
+        return ScaleOrdered(
+            self.name,
+            tuple((pc - root) % 12 for pc in self.pcs),
+        )
+
+    def as_set(self) -> PitchClassSet:
+        return PitchClassSet.from_seq(self.pcs)
+
+
+# ============================================================
+# External conversion (explicit responsibility)
+# ============================================================
+
+
+def ordered_from_scale(scale: Scale) -> ScaleOrdered:
+    """
+    Convert a scale (set) into an ordered scale
+    using canonical ascending pitch-class order.
+    """
+    return ScaleOrdered(scale.name, scale.pcs.pcs)
+
+
+# ============================================================
+# Scale definitions (ALL preserved)
 # ============================================================
 
 SCALES: dict[str, Scale] = {
@@ -37,7 +102,7 @@ SCALES: dict[str, Scale] = {
     "chinese": Scale("chinese", PitchClassSet.from_seq([0, 4, 6, 7, 11])),
     "indian": Scale("indian", PitchClassSet.from_seq([0, 4, 5, 7, 10])),
     "pelog": Scale("pelog", PitchClassSet.from_seq([0, 1, 3, 7, 8])),
-    # More pentatonic-related
+    # Pentatonic relatives
     "prometheus": Scale("prometheus", PitchClassSet.from_seq([0, 2, 4, 6, 11])),
     "scriabin": Scale("scriabin", PitchClassSet.from_seq([0, 1, 4, 7, 9])),
     # Han Chinese pentatonic
@@ -105,7 +170,7 @@ SCALES: dict[str, Scale] = {
 
 
 # ============================================================
-# Chord definitions
+# Chord definitions (ALL preserved)
 # ============================================================
 
 CHORDS: dict[str, Chord] = {

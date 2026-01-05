@@ -14,7 +14,10 @@ def convert_to_midi_events(start_ms: int, events: Iterable[NoteEvent]) -> list[t
             (e.start_ms, Message("note_on", note=e.pitch, velocity=e.velocity, time=0, channel=e.channel))
         )
         midi_events.append(
-            (e.start_ms + e.duration_ms, Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel))
+            (
+                e.start_ms + e.duration_ms * e.gate,
+                Message("note_off", note=e.pitch, velocity=0, time=0, channel=e.channel),
+            )
         )
 
     midi_events.sort(key=lambda x: x[0])

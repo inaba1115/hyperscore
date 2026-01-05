@@ -88,7 +88,9 @@ class MidiPlayer:
             logical_time = time.time()
             for _, msg in midi_events:
                 logical_time += msg.time * 0.001  # type: ignore
+
                 delta_time = logical_time - time.time()
                 if delta_time > 0:
                     time.sleep(delta_time)
+
                 outport.send(msg)

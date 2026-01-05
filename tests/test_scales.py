@@ -1,40 +1,35 @@
 import unittest
 
-from hyperscore.scales import (
-    dice_similarity,
-    difference,
-    intersection,
-    jaccard_similarity,
-    overlap_similarity,
-    union,
-    unique,
-)
+from hyperscore.scales import PitchClassSet
 
 
-class TestScales(unittest.TestCase):
+class TestPitchClassSet(unittest.TestCase):
     def test_union(self):
-        self.assertEqual(union([1, 2], [2, 3]), [1, 2, 3])
+        a = PitchClassSet.from_seq([1, 2])
+        b = PitchClassSet.from_seq([2, 3])
+        self.assertEqual(a.union(b), PitchClassSet.from_seq([1, 2, 3]))
 
     def test_intersection(self):
-        self.assertEqual(intersection([1, 2], [2, 3]), [2])
+        a = PitchClassSet.from_seq([1, 2])
+        b = PitchClassSet.from_seq([2, 3])
+        self.assertEqual(a.intersection(b), PitchClassSet.from_seq([2]))
 
     def test_difference(self):
-        self.assertEqual(difference([1, 2], [2, 3]), [1, 3])
-
-    def test_unique(self):
-        self.assertEqual(unique([3, 2, 1, 1, 2, 3]), [1, 2, 3])
+        a = PitchClassSet.from_seq([1, 2])
+        b = PitchClassSet.from_seq([2, 3])
+        self.assertEqual(a.difference(b), PitchClassSet.from_seq([1, 3]))
 
     def test_jaccard_similarity(self):
-        xs = [0, 1, 2, 3, 4, 5]
-        ys = [3, 4, 5, 6]
-        self.assertAlmostEqual(jaccard_similarity(xs, ys), 0.42857142857142855)
+        a = PitchClassSet.from_seq([0, 1, 2, 3, 4, 5])
+        b = PitchClassSet.from_seq([3, 4, 5, 6])
+        self.assertAlmostEqual(a.jaccard(b), 0.42857142857142855)
 
     def test_dice_similarity(self):
-        xs = [0, 1, 2, 3, 4, 5]
-        ys = [3, 4, 5, 6]
-        self.assertAlmostEqual(dice_similarity(xs, ys), 0.6)
+        a = PitchClassSet.from_seq([0, 1, 2, 3, 4, 5])
+        b = PitchClassSet.from_seq([3, 4, 5, 6])
+        self.assertAlmostEqual(a.dice(b), 0.6)
 
     def test_overlap_similarity(self):
-        xs = [0, 1, 2, 3, 4, 5]
-        ys = [3, 4, 5, 6]
-        self.assertAlmostEqual(overlap_similarity(xs, ys), 0.75)
+        a = PitchClassSet.from_seq([0, 1, 2, 3, 4, 5])
+        b = PitchClassSet.from_seq([3, 4, 5, 6])
+        self.assertAlmostEqual(a.overlap(b), 0.75)

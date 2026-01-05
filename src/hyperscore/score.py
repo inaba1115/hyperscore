@@ -1,4 +1,6 @@
-from collections.abc import Callable, Iterable, Sequence
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Generic, Protocol, TypeVar
 
@@ -26,9 +28,12 @@ EventT = TypeVar("EventT")
 # ============================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class ScoreContext:
     cursor_ms: int
+
+    def advance(self, delta_ms: int) -> ScoreContext:
+        return ScoreContext(cursor_ms=self.cursor_ms + delta_ms)
 
 
 # ============================================================
@@ -37,14 +42,19 @@ class ScoreContext:
 
 
 class ScoreInput(Protocol[EventT]):
-    def iter_events(self, ctx: ScoreContext) -> Iterable[EventT]: ...
+    def iter_events(
+        self,
+        ctx: ScoreContext,
+    ) -> tuple[list[EventT], ScoreContext]: ...
 
 
 # ============================================================
 # EventFactory protocol
 # ============================================================
 
+
 EventFactory = Callable[..., EventT]
+
 
 # ============================================================
 # ZippedNotes (generic, factory-based)
@@ -69,9 +79,12 @@ class ZippedNotes(Generic[EventT]):
     def _max_len(self) -> int:
         return max(len(getattr(self, f.name)) for f in fields(self) if f.name != "event_factory")
 
-    def iter_events(self, ctx: ScoreContext) -> Iterable[EventT]:
+    def iter_events(self, ctx: ScoreContext) -> tuple[list[EventT], ScoreContext]:
         if self.event_factory is None:
             raise ValueError("event_factory must be provided")
+
+        events: list[EventT] = []
+        cur = ctx
 
         for i in range(self._max_len()):
             d = self.duration[i % len(self.duration)]
@@ -79,7 +92,7 @@ class ZippedNotes(Generic[EventT]):
             kwargs = {
                 "pitch": self.pitch[i % len(self.pitch)],
                 "velocity": self.velocity[i % len(self.velocity)],
-                "start_ms": ctx.cursor_ms,
+                "start_ms": cur.cursor_ms,
                 "duration_ms": d,
                 "gate": self.gate[i % len(self.gate)],
                 "probability": self.probability[i % len(self.probability)],
@@ -87,9 +100,11 @@ class ZippedNotes(Generic[EventT]):
             }
 
             ev = self.event_factory(**kwargs)
-            yield ev
+            events.append(ev)
 
-            ctx.cursor_ms += d
+            cur = cur.advance(d)
+
+        return events, cur
 
 
 # ============================================================
@@ -110,7 +125,7 @@ class Score(Generic[EventT]):
         return self._context.cursor_ms
 
     def set_cursor_ms(self, cursor_ms: int) -> None:
-        self._context.cursor_ms = cursor_ms
+        self._context = ScoreContext(cursor_ms=cursor_ms)
 
     # ---------------- add ----------------
 
@@ -127,11 +142,15 @@ class Score(Generic[EventT]):
         start_ms: int | None = None,
         event_factory: EventFactory[EventT] | None = None,
     ) -> None:
+        ctx = self._context
+
         if start_ms is not None:
-            self._context.cursor_ms = start_ms
+            ctx = ScoreContext(cursor_ms=start_ms)
 
         if source is not None:
-            self._events.extend(source.iter_events(self._context))
+            events, ctx = source.iter_events(ctx)
+            self._events.extend(events)
+            self._context = ctx
             self._dirty = True
             return
 
@@ -148,11 +167,13 @@ class Score(Generic[EventT]):
         }
 
         source = ZippedNotes(
-            **{k: v for k, v in kwargs.items() if v is not None},  # type: ignore
+            **{k: v for k, v in kwargs.items() if v is not None},  # type: ignore[arg-type]
             event_factory=event_factory,
         )
 
-        self._events.extend(source.iter_events(self._context))
+        events, ctx = source.iter_events(ctx)
+        self._events.extend(events)
+        self._context = ctx
         self._dirty = True
 
     # ---------------- query ----------------

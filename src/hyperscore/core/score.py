@@ -4,9 +4,17 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Generic, Protocol, TypeVar
 
+from .time import TimeSpan
+
 # ============================================================
 # Event model (default)
 # ============================================================
+
+
+@dataclass(frozen=True)
+class TimedEvent:
+    span: TimeSpan
+    payload: object  # NoteEvent など
 
 
 @dataclass(frozen=True)

@@ -2,8 +2,8 @@ import unittest
 
 from mido import Message
 
-from hyperscore.midi import convert_to_midi_events
-from hyperscore.score import NoteEvent, ScoreContext, ZippedNotes
+from hyperscore.core import NoteEvent, ScoreContext, ZippedNotes
+from hyperscore.io.midi import convert_to_midi_events
 
 
 class TestMidi(unittest.TestCase):

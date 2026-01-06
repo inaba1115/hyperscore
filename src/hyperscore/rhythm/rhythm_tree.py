@@ -5,6 +5,8 @@ from fractions import Fraction
 
 from lark import Lark, Token, Transformer, v_args
 
+from hyperscore.core.time import TimeSpan
+
 GRAMMAR = r"""
 start: sequence
 
@@ -311,3 +313,16 @@ def rhythm_ast_to_ticks(
 
     durations_frac = expand_to_fractions(norm)
     return quantize_fractions_to_ticks(durations_frac, total_ticks)
+
+
+def durations_to_timespans(
+    durations: list[int],
+    *,
+    start: int = 0,
+) -> list[TimeSpan]:
+    t = start
+    spans = []
+    for d in durations:
+        spans.append(TimeSpan(t, d))
+        t += d
+    return spans

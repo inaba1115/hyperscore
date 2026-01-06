@@ -1,6 +1,6 @@
 import unittest
 
-from hyperscore.score import NoteEvent, Score, ScoreContext, ZippedNotes
+from hyperscore.core import NoteEvent, Score, ScoreContext, ZippedNotes
 
 
 class TestZippedNotes(unittest.TestCase):

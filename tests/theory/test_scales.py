@@ -1,6 +1,6 @@
 import unittest
 
-from hyperscore.scales import SCALES, ScaleOrdered, ordered_from_scale
+from hyperscore.theory import SCALES, ordered_from_scale
 
 
 class TestScales(unittest.TestCase):

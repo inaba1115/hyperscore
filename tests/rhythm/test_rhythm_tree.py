@@ -1,7 +1,8 @@
 import unittest
 from fractions import Fraction
 
-from hyperscore.rhythm_tree import Atom, Group, Repeat, Sequence, Split, parse_rhythm, rhythm_ast_to_ticks
+from hyperscore.rhythm import parse_rhythm, rhythm_ast_to_ticks
+from hyperscore.rhythm.rhythm_tree import Atom, Group, Repeat, Sequence, Split
 
 
 class TestRhythmTree(unittest.TestCase):

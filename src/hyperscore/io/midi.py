@@ -5,7 +5,7 @@ import mido
 import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
-from .score import NoteEvent, Score
+from hyperscore.core import NoteEvent, Score
 
 
 def convert_to_midi_events(

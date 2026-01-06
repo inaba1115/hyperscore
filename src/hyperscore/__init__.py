@@ -2,9 +2,9 @@
 hyperscore: structural music composition library
 """
 
-from hyperscore.core.score import Score, ZippedNotes
-from hyperscore.rhythm.rhythm_tree import parse_rhythm
-from hyperscore.theory.scales import CHORDS, SCALES
+from hyperscore.core import Score, ZippedNotes
+from hyperscore.rhythm import parse_rhythm
+from hyperscore.theory import CHORDS, SCALES
 
 __all__ = [
     "CHORDS",

@@ -75,7 +75,6 @@ def note_events_to_midi_messages(
     events: Iterable[NoteEvent],
     *,
     timebase: MidiTimebase,
-    rng: np.random.Generator,
 ) -> list[tuple[int, Message]]:
     """
     Convert NoteEvents to absolute-time MIDI messages (ticks).
@@ -118,7 +117,7 @@ def note_events_to_midi_messages(
         messages.append((tick, msg))
 
     # ---- sort by absolute tick ----
-    messages.sort(key=lambda x: x[0])
+    messages.sort(key=lambda x: (x[0], 0 if x[1].type == "note_off" else 1))
     return messages
 
 
@@ -148,13 +147,11 @@ class MidiExporter:
         *,
         ticks_per_beat: int = 480,
         tempo_us_per_beat: int = 500_000,
-        rng: np.random.Generator | None = None,
     ):
         self.timebase = MidiTimebase(
             ticks_per_beat=ticks_per_beat,
             tempo_us_per_beat=tempo_us_per_beat,
         )
-        self.rng = rng if rng else np.random.default_rng()
 
     def export(
         self,
@@ -181,7 +178,6 @@ class MidiExporter:
         abs_msgs = note_events_to_midi_messages(
             events,
             timebase=self.timebase,
-            rng=self.rng,
         )
 
         for msg in absolute_to_delta(abs_msgs):
@@ -201,11 +197,9 @@ class MidiPlayer:
         *,
         output: mido.ports.BaseOutput,
         timebase: MidiTimebase | None = None,
-        rng: np.random.Generator | None = None,
     ):
         self.output = output
         self.timebase = timebase or MidiTimebase()
-        self.rng = rng if rng else np.random.default_rng()
 
     def play(
         self,
@@ -219,7 +213,6 @@ class MidiPlayer:
         abs_msgs = note_events_to_midi_messages(
             events,
             timebase=self.timebase,
-            rng=self.rng,
         )
         delta_msgs = absolute_to_delta(abs_msgs)
 

@@ -15,7 +15,7 @@ def _mod12(x: int) -> int:
 
 
 # ============================================================
-# Pitch-class set (immutable)
+# Pitch-class set
 # ============================================================
 
 
@@ -30,6 +30,14 @@ class PitchClassSet:
     """
 
     pcs: tuple[PitchClass, ...]
+
+    # ---------- special methods ----------
+
+    def __contains__(self, pc: int) -> bool:
+        return _mod12(pc) in self.pcs
+
+    def __len__(self) -> int:
+        return len(self.pcs)
 
     # ---------- constructors ----------
 

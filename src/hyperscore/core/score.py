@@ -1,26 +1,29 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Generic, Protocol, TypeVar
+
+from .time import TimeSpan
 
 # ============================================================
 # Event model (default)
 # ============================================================
 
 
+class HasTimeSpan(Protocol):
+    span: TimeSpan
+
+
 @dataclass(frozen=True)
 class NoteEvent:
     pitch: int
     velocity: int
-    start_ms: int
-    duration_ms: int
-    gate: float
-    probability: float
+    span: TimeSpan
     channel: int
 
 
-EventT = TypeVar("EventT")
+EventT = TypeVar("EventT", bound=HasTimeSpan)
 
 
 # ============================================================
@@ -30,10 +33,10 @@ EventT = TypeVar("EventT")
 
 @dataclass(frozen=True)
 class ScoreContext:
-    cursor_ms: int
+    cursor: int
 
-    def advance(self, delta_ms: int) -> ScoreContext:
-        return ScoreContext(cursor_ms=self.cursor_ms + delta_ms)
+    def advance(self, delta: int) -> ScoreContext:
+        return ScoreContext(cursor=self.cursor + delta)
 
 
 # ============================================================
@@ -63,12 +66,19 @@ EventFactory = Callable[..., EventT]
 
 @dataclass(frozen=True)
 class ZippedNotes(Generic[EventT]):
+    """
+    Convenience builder for simple sequential note generation.
+
+    For advanced temporal control, prefer:
+        - rhythm_tree
+        - TimeSpanPipeline
+        - Score.add_timespans()
+    """
+
     # ---- core zipped parameters ----
     pitch: Sequence[int] = field(default_factory=lambda: [60])
     velocity: Sequence[int] = field(default_factory=lambda: [100])
     duration: Sequence[int] = field(default_factory=lambda: [1000])
-    gate: Sequence[float] = field(default_factory=lambda: [1.0])
-    probability: Sequence[float] = field(default_factory=lambda: [1.0])
     channel: Sequence[int] = field(default_factory=lambda: [0])
 
     # ---- extensibility ----
@@ -88,14 +98,12 @@ class ZippedNotes(Generic[EventT]):
 
         for i in range(self._max_len()):
             d = self.duration[i % len(self.duration)]
+            span = TimeSpan(start=cur.cursor, duration=d)
 
             kwargs = {
                 "pitch": self.pitch[i % len(self.pitch)],
                 "velocity": self.velocity[i % len(self.velocity)],
-                "start_ms": cur.cursor_ms,
-                "duration_ms": d,
-                "gate": self.gate[i % len(self.gate)],
-                "probability": self.probability[i % len(self.probability)],
+                "span": span,
                 "channel": self.channel[i % len(self.channel)],
             }
 
@@ -112,20 +120,27 @@ class ZippedNotes(Generic[EventT]):
 # ============================================================
 
 
-class Score(Generic[EventT]):
+class Score(Generic[EventT], Iterable[EventT]):
     def __init__(self):
-        self._context: ScoreContext = ScoreContext(cursor_ms=0)
+        self._context: ScoreContext = ScoreContext(cursor=0)
         self._events: list[EventT] = []
         self._sorted_by_start: list[EventT] = []
         self._dirty: bool = False
 
+    def __iter__(self) -> Iterator[EventT]:
+        """
+        Iterate over all events in time order.
+        """
+        self._ensure_sorted()
+        return iter(self._sorted_by_start)
+
     # ---------------- cursor ----------------
 
-    def get_cursor_ms(self) -> int:
-        return self._context.cursor_ms
+    def get_cursor(self) -> int:
+        return self._context.cursor
 
-    def set_cursor_ms(self, cursor_ms: int) -> None:
-        self._context = ScoreContext(cursor_ms=cursor_ms)
+    def set_cursor(self, cursor: int) -> None:
+        self._context = ScoreContext(cursor=cursor)
 
     # ---------------- add ----------------
 
@@ -136,16 +151,22 @@ class Score(Generic[EventT]):
         pitch: Sequence[int] | None = None,
         velocity: Sequence[int] | None = None,
         duration: Sequence[int] | None = None,
-        gate: Sequence[float] | None = None,
-        probability: Sequence[float] | None = None,
         channel: Sequence[int] | None = None,
-        start_ms: int | None = None,
+        start: int | None = None,
         event_factory: EventFactory[EventT] | None = None,
     ) -> None:
+        """
+        Simple, convenience API for basic use cases.
+
+        For advanced temporal control, prefer:
+            - rhythm_tree
+            - TimeSpanPipeline
+            - add_timespans()
+        """
         ctx = self._context
 
-        if start_ms is not None:
-            ctx = ScoreContext(cursor_ms=start_ms)
+        if start is not None:
+            ctx = ScoreContext(cursor=start)
 
         if source is not None:
             events, ctx = source.iter_events(ctx)
@@ -161,19 +182,34 @@ class Score(Generic[EventT]):
             "pitch": pitch,
             "velocity": velocity,
             "duration": duration,
-            "gate": gate,
-            "probability": probability,
             "channel": channel,
         }
 
-        source = ZippedNotes(
+        source_ = ZippedNotes[EventT](
             **{k: v for k, v in kwargs.items() if v is not None},  # type: ignore[arg-type]
             event_factory=event_factory,
         )
 
-        events, ctx = source.iter_events(ctx)
+        events, ctx = source_.iter_events(ctx)
         self._events.extend(events)
         self._context = ctx
+        self._dirty = True
+
+    def add_timespans(
+        self,
+        spans: Iterable[TimeSpan],
+        *,
+        factory: Callable[[TimeSpan], EventT],
+    ) -> None:
+        """
+        Add events generated from TimeSpans.
+
+        Score does not interpret TimeSpan contents.
+        """
+        for span in spans:
+            ev = factory(span)
+            self._events.append(ev)
+
         self._dirty = True
 
     # ---------------- query ----------------
@@ -182,21 +218,43 @@ class Score(Generic[EventT]):
         if self._dirty:
             self._sorted_by_start = sorted(
                 self._events,
-                key=lambda e: getattr(e, "start_ms"),
+                key=lambda e: e.span.start,
             )
             self._dirty = False
+
+    def events_between_span(self, span: TimeSpan) -> list[EventT]:
+        """
+        Return events whose TimeSpan overlaps with the given span.
+        """
+        self._ensure_sorted()
+
+        if not self._sorted_by_start:
+            return []
+
+        result: list[EventT] = []
+
+        for e in self._sorted_by_start:
+            if e.span.overlaps(span):
+                result.append(e)
+
+            # optimization: since sorted by start
+            if e.span.start >= span.end:
+                break
+
+        return result
 
     def events_between(
         self,
         start_ms: int = 0,
         end_ms: int | None = None,
     ) -> list[EventT]:
-        self._ensure_sorted()
-
-        if not self._sorted_by_start:
-            return []
-
         if end_ms is None:
-            end_ms = max(getattr(e, "start_ms") for e in self._sorted_by_start)
+            # 明示的に「start 以降すべて」
+            self._ensure_sorted()
+            return [e for e in self._sorted_by_start if e.span.start >= start_ms]
 
-        return [e for e in self._sorted_by_start if start_ms <= getattr(e, "start_ms") <= end_ms]
+        span = TimeSpan(
+            start=start_ms,
+            duration=end_ms - start_ms,
+        )
+        return self.events_between_span(span)

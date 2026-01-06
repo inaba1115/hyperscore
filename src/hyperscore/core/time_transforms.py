@@ -13,9 +13,15 @@ def gate(ratio: float):
     return f
 
 
-def probability(p: float, *, rng=random):
+def probability(p: float):
+    """
+    Note:
+        Uses Python's global random generator.
+        Set random.seed(...) for reproducible results.
+    """
+
     def f(span: TimeSpan) -> TimeSpan | None:
-        return span if rng.random() < p else None
+        return span if random.random() < p else None
 
     return f
 

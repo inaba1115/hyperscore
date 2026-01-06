@@ -5,7 +5,6 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 import mido
-import numpy as np
 from mido import Message, MetaMessage, MidiFile, MidiTrack
 
 from hyperscore.core import NoteEvent

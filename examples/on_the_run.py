@@ -39,16 +39,10 @@ spans = [span.shift(i * bar_ms) for i in range(8) for span in base_spans]
 def on_the_run_factory(span):
     pitch = next(arp)
 
-    probability = random.choice([1.0, 1.0, 0.8, 0.6, 0.0])
-
-    gate = random.choice([0.15, 0.25, 0.4, 0.7])
-
     return NoteEvent(
         pitch=pitch,
         velocity=100,
         span=span,
-        gate=gate,
-        probability=probability,
         channel=0,
     )
 

@@ -80,21 +80,15 @@ def note_events_to_midi_messages(
     """
     Convert NoteEvents to absolute-time MIDI messages (ticks).
     """
-    # ---- probability filter ----
-    filtered = [e for e in events if e.probability > rng.uniform()]
-
     # ---- build absolute ms times ----
     times_ms: list[int] = []
     msg_specs: list[tuple[str, NoteEvent]] = []
 
-    for e in filtered:
-        span = e.span
-        note_off_ms = span.start + int(span.duration * e.gate)
-
-        times_ms.append(span.start)
+    for e in events:
+        times_ms.append(e.span.start)
         msg_specs.append(("on", e))
 
-        times_ms.append(note_off_ms)
+        times_ms.append(e.span.end)
         msg_specs.append(("off", e))
 
     # ---- quantize ms -> ticks globally ----

@@ -20,8 +20,6 @@ class NoteEvent:
     pitch: int
     velocity: int
     span: TimeSpan
-    gate: float
-    probability: float
     channel: int
 
 
@@ -72,8 +70,6 @@ class ZippedNotes(Generic[EventT]):
     pitch: Sequence[int] = field(default_factory=lambda: [60])
     velocity: Sequence[int] = field(default_factory=lambda: [100])
     duration: Sequence[int] = field(default_factory=lambda: [1000])
-    gate: Sequence[float] = field(default_factory=lambda: [1.0])
-    probability: Sequence[float] = field(default_factory=lambda: [1.0])
     channel: Sequence[int] = field(default_factory=lambda: [0])
 
     # ---- extensibility ----
@@ -99,8 +95,6 @@ class ZippedNotes(Generic[EventT]):
                 "pitch": self.pitch[i % len(self.pitch)],
                 "velocity": self.velocity[i % len(self.velocity)],
                 "span": span,
-                "gate": self.gate[i % len(self.gate)],
-                "probability": self.probability[i % len(self.probability)],
                 "channel": self.channel[i % len(self.channel)],
             }
 
@@ -148,8 +142,6 @@ class Score(Generic[EventT], Iterable[EventT]):
         pitch: Sequence[int] | None = None,
         velocity: Sequence[int] | None = None,
         duration: Sequence[int] | None = None,
-        gate: Sequence[float] | None = None,
-        probability: Sequence[float] | None = None,
         channel: Sequence[int] | None = None,
         start_ms: int | None = None,
         event_factory: EventFactory[EventT] | None = None,
@@ -173,17 +165,15 @@ class Score(Generic[EventT], Iterable[EventT]):
             "pitch": pitch,
             "velocity": velocity,
             "duration": duration,
-            "gate": gate,
-            "probability": probability,
             "channel": channel,
         }
 
-        source = ZippedNotes(
+        source_ = ZippedNotes[EventT](
             **{k: v for k, v in kwargs.items() if v is not None},  # type: ignore[arg-type]
             event_factory=event_factory,
         )
 
-        events, ctx = source.iter_events(ctx)
+        events, ctx = source_.iter_events(ctx)
         self._events.extend(events)
         self._context = ctx
         self._dirty = True

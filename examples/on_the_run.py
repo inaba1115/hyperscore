@@ -1,3 +1,4 @@
+import random
 from itertools import cycle
 
 import mido
@@ -31,20 +32,32 @@ base_spans = rhythm_ast_to_timespans(ast, total=bar_ms)
 spans = [span.shift(i * bar_ms) for i in range(8) for span in base_spans]
 
 # --------------------------------------------------
+# factory
+# --------------------------------------------------
+
+
+def on_the_run_factory(span):
+    pitch = next(arp)
+
+    probability = random.choice([1.0, 1.0, 0.8, 0.6, 0.0])
+
+    gate = random.choice([0.15, 0.25, 0.4, 0.7])
+
+    return NoteEvent(
+        pitch=pitch,
+        velocity=100,
+        span=span,
+        gate=gate,
+        probability=probability,
+        channel=0,
+    )
+
+
+# --------------------------------------------------
 # score injection
 # --------------------------------------------------
 
-score.add_timespans(
-    spans,
-    factory=lambda span: NoteEvent(
-        pitch=next(arp),
-        velocity=100,
-        span=span,
-        gate=1.0,
-        probability=1.0,
-        channel=0,
-    ),
-)
+score.add_timespans(spans, factory=on_the_run_factory)
 
 # --------------------------------------------------
 # output

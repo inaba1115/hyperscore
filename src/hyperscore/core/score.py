@@ -66,6 +66,15 @@ EventFactory = Callable[..., EventT]
 
 @dataclass(frozen=True)
 class ZippedNotes(Generic[EventT]):
+    """
+    Convenience builder for simple sequential note generation.
+
+    For advanced temporal control, prefer:
+        - rhythm_tree
+        - TimeSpanPipeline
+        - Score.add_timespans()
+    """
+
     # ---- core zipped parameters ----
     pitch: Sequence[int] = field(default_factory=lambda: [60])
     velocity: Sequence[int] = field(default_factory=lambda: [100])
@@ -146,6 +155,14 @@ class Score(Generic[EventT], Iterable[EventT]):
         start: int | None = None,
         event_factory: EventFactory[EventT] | None = None,
     ) -> None:
+        """
+        Simple, convenience API for basic use cases.
+
+        For advanced temporal control, prefer:
+            - rhythm_tree
+            - TimeSpanPipeline
+            - add_timespans()
+        """
         ctx = self._context
 
         if start is not None:

@@ -87,7 +87,7 @@ def ordered_from_scale(scale: Scale) -> ScaleOrdered:
 
 
 # ============================================================
-# Scale definitions (ALL preserved)
+# Scale definitions
 # ============================================================
 
 SCALES: dict[str, Scale] = {
@@ -170,7 +170,7 @@ SCALES: dict[str, Scale] = {
 
 
 # ============================================================
-# Chord definitions (ALL preserved)
+# Chord definitions
 # ============================================================
 
 CHORDS: dict[str, Chord] = {

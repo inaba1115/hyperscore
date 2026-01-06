@@ -13,7 +13,7 @@ class TestScore(unittest.TestCase):
             event_factory=NoteEvent,
         )
         score = Score()
-        score.add(source, start_ms=500)
+        score.add(source, start=500)
         events = score.events_between()
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
@@ -32,7 +32,7 @@ class TestScore(unittest.TestCase):
             velocity=[80, 100],
             duration=[100, 200],
             channel=[0, 1],
-            start_ms=500,
+            start=500,
             event_factory=NoteEvent,
         )
         events = score.events_between()

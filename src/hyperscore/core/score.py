@@ -35,8 +35,8 @@ EventT = TypeVar("EventT", bound=HasTimeSpan)
 class ScoreContext:
     cursor: int
 
-    def advance(self, delta_ms: int) -> ScoreContext:
-        return ScoreContext(cursor=self.cursor + delta_ms)
+    def advance(self, delta: int) -> ScoreContext:
+        return ScoreContext(cursor=self.cursor + delta)
 
 
 # ============================================================
@@ -127,11 +127,11 @@ class Score(Generic[EventT], Iterable[EventT]):
 
     # ---------------- cursor ----------------
 
-    def get_cursor_ms(self) -> int:
+    def get_cursor(self) -> int:
         return self._context.cursor
 
-    def set_cursor_ms(self, cursor_ms: int) -> None:
-        self._context = ScoreContext(cursor=cursor_ms)
+    def set_cursor(self, cursor: int) -> None:
+        self._context = ScoreContext(cursor=cursor)
 
     # ---------------- add ----------------
 
@@ -143,13 +143,13 @@ class Score(Generic[EventT], Iterable[EventT]):
         velocity: Sequence[int] | None = None,
         duration: Sequence[int] | None = None,
         channel: Sequence[int] | None = None,
-        start_ms: int | None = None,
+        start: int | None = None,
         event_factory: EventFactory[EventT] | None = None,
     ) -> None:
         ctx = self._context
 
-        if start_ms is not None:
-            ctx = ScoreContext(cursor=start_ms)
+        if start is not None:
+            ctx = ScoreContext(cursor=start)
 
         if source is not None:
             events, ctx = source.iter_events(ctx)

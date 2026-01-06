@@ -188,6 +188,23 @@ class Score(Generic[EventT], Iterable[EventT]):
         self._context = ctx
         self._dirty = True
 
+    def add_timespans(
+        self,
+        spans: Iterable[TimeSpan],
+        *,
+        factory: Callable[[TimeSpan], EventT],
+    ) -> None:
+        """
+        Add events generated from TimeSpans.
+
+        Score does not interpret TimeSpan contents.
+        """
+        for span in spans:
+            ev = factory(span)
+            self._events.append(ev)
+
+        self._dirty = True
+
     # ---------------- query ----------------
 
     def _ensure_sorted(self) -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Generic, Protocol, TypeVar
 
@@ -11,24 +11,21 @@ from .time import TimeSpan
 # ============================================================
 
 
-@dataclass(frozen=True)
-class TimedEvent:
+class HasTimeSpan(Protocol):
     span: TimeSpan
-    payload: object  # NoteEvent など
 
 
 @dataclass(frozen=True)
 class NoteEvent:
     pitch: int
     velocity: int
-    start_ms: int
-    duration_ms: int
+    span: TimeSpan
     gate: float
     probability: float
     channel: int
 
 
-EventT = TypeVar("EventT")
+EventT = TypeVar("EventT", bound=HasTimeSpan)
 
 
 # ============================================================
@@ -38,10 +35,10 @@ EventT = TypeVar("EventT")
 
 @dataclass(frozen=True)
 class ScoreContext:
-    cursor_ms: int
+    cursor: int
 
     def advance(self, delta_ms: int) -> ScoreContext:
-        return ScoreContext(cursor_ms=self.cursor_ms + delta_ms)
+        return ScoreContext(cursor=self.cursor + delta_ms)
 
 
 # ============================================================
@@ -96,12 +93,12 @@ class ZippedNotes(Generic[EventT]):
 
         for i in range(self._max_len()):
             d = self.duration[i % len(self.duration)]
+            span = TimeSpan(start=cur.cursor, duration=d)
 
             kwargs = {
                 "pitch": self.pitch[i % len(self.pitch)],
                 "velocity": self.velocity[i % len(self.velocity)],
-                "start_ms": cur.cursor_ms,
-                "duration_ms": d,
+                "span": span,
                 "gate": self.gate[i % len(self.gate)],
                 "probability": self.probability[i % len(self.probability)],
                 "channel": self.channel[i % len(self.channel)],
@@ -120,20 +117,27 @@ class ZippedNotes(Generic[EventT]):
 # ============================================================
 
 
-class Score(Generic[EventT]):
+class Score(Generic[EventT], Iterable[EventT]):
     def __init__(self):
-        self._context: ScoreContext = ScoreContext(cursor_ms=0)
+        self._context: ScoreContext = ScoreContext(cursor=0)
         self._events: list[EventT] = []
         self._sorted_by_start: list[EventT] = []
         self._dirty: bool = False
 
+    def __iter__(self) -> Iterator[EventT]:
+        """
+        Iterate over all events in time order.
+        """
+        self._ensure_sorted()
+        return iter(self._sorted_by_start)
+
     # ---------------- cursor ----------------
 
     def get_cursor_ms(self) -> int:
-        return self._context.cursor_ms
+        return self._context.cursor
 
     def set_cursor_ms(self, cursor_ms: int) -> None:
-        self._context = ScoreContext(cursor_ms=cursor_ms)
+        self._context = ScoreContext(cursor=cursor_ms)
 
     # ---------------- add ----------------
 
@@ -153,7 +157,7 @@ class Score(Generic[EventT]):
         ctx = self._context
 
         if start_ms is not None:
-            ctx = ScoreContext(cursor_ms=start_ms)
+            ctx = ScoreContext(cursor=start_ms)
 
         if source is not None:
             events, ctx = source.iter_events(ctx)
@@ -190,21 +194,43 @@ class Score(Generic[EventT]):
         if self._dirty:
             self._sorted_by_start = sorted(
                 self._events,
-                key=lambda e: getattr(e, "start_ms"),
+                key=lambda e: e.span.start,
             )
             self._dirty = False
+
+    def events_between_span(self, span: TimeSpan) -> list[EventT]:
+        """
+        Return events whose TimeSpan overlaps with the given span.
+        """
+        self._ensure_sorted()
+
+        if not self._sorted_by_start:
+            return []
+
+        result: list[EventT] = []
+
+        for e in self._sorted_by_start:
+            if e.span.overlaps(span):
+                result.append(e)
+
+            # optimization: since sorted by start
+            if e.span.start >= span.end:
+                break
+
+        return result
 
     def events_between(
         self,
         start_ms: int = 0,
         end_ms: int | None = None,
     ) -> list[EventT]:
-        self._ensure_sorted()
-
-        if not self._sorted_by_start:
-            return []
-
         if end_ms is None:
-            end_ms = max(getattr(e, "start_ms") for e in self._sorted_by_start)
+            # 明示的に「start 以降すべて」
+            self._ensure_sorted()
+            return [e for e in self._sorted_by_start if e.span.start >= start_ms]
 
-        return [e for e in self._sorted_by_start if start_ms <= getattr(e, "start_ms") <= end_ms]
+        span = TimeSpan(
+            start=start_ms,
+            duration=end_ms - start_ms,
+        )
+        return self.events_between_span(span)

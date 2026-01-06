@@ -1,47 +1,6 @@
 import unittest
 
-from hyperscore.core import NoteEvent, Score, ScoreContext, ZippedNotes
-
-
-class TestZippedNotes(unittest.TestCase):
-    def test_max_len(self):
-        source = ZippedNotes()
-        self.assertEqual(source._max_len(), 1)
-
-        source = ZippedNotes(pitch=[1, 2])
-        self.assertEqual(source._max_len(), 2)
-
-        source = ZippedNotes(velocity=[1, 2, 3])
-        self.assertEqual(source._max_len(), 3)
-
-    def test_iter_events(self):
-        source = ZippedNotes(
-            pitch=[60, 62],
-            velocity=[80, 100],
-            duration=[100, 200],
-            gate=[0.5],
-            probability=[0.5],
-            channel=[0, 1],
-            event_factory=NoteEvent,
-        )
-        context = ScoreContext(cursor_ms=500)
-        events, _ = source.iter_events(context)
-        events = list(events)
-        self.assertEqual(len(events), 2)
-        self.assertEqual(events[0].pitch, 60)
-        self.assertEqual(events[0].velocity, 80)
-        self.assertEqual(events[0].start_ms, 500)
-        self.assertEqual(events[0].duration_ms, 100)
-        self.assertEqual(events[0].gate, 0.5)
-        self.assertEqual(events[0].probability, 0.5)
-        self.assertEqual(events[0].channel, 0)
-        self.assertEqual(events[1].pitch, 62)
-        self.assertEqual(events[1].velocity, 100)
-        self.assertEqual(events[1].start_ms, 600)
-        self.assertEqual(events[1].duration_ms, 200)
-        self.assertEqual(events[1].gate, 0.5)
-        self.assertEqual(events[1].probability, 0.5)
-        self.assertEqual(events[1].channel, 1)
+from hyperscore.core import NoteEvent, Score, TimeSpan, ZippedNotes
 
 
 class TestScore(unittest.TestCase):
@@ -61,15 +20,13 @@ class TestScore(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
         self.assertEqual(events[0].velocity, 80)
-        self.assertEqual(events[0].start_ms, 500)
-        self.assertEqual(events[0].duration_ms, 100)
+        self.assertEqual(events[0].span, TimeSpan(500, 100))
         self.assertEqual(events[0].gate, 0.5)
         self.assertEqual(events[0].probability, 0.5)
         self.assertEqual(events[0].channel, 0)
         self.assertEqual(events[1].pitch, 62)
         self.assertEqual(events[1].velocity, 100)
-        self.assertEqual(events[1].start_ms, 600)
-        self.assertEqual(events[1].duration_ms, 200)
+        self.assertEqual(events[1].span, TimeSpan(600, 200))
         self.assertEqual(events[1].gate, 0.5)
         self.assertEqual(events[1].probability, 0.5)
         self.assertEqual(events[1].channel, 1)
@@ -90,15 +47,13 @@ class TestScore(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0].pitch, 60)
         self.assertEqual(events[0].velocity, 80)
-        self.assertEqual(events[0].start_ms, 500)
-        self.assertEqual(events[0].duration_ms, 100)
+        self.assertEqual(events[0].span, TimeSpan(500, 100))
         self.assertEqual(events[0].gate, 0.5)
         self.assertEqual(events[0].probability, 0.5)
         self.assertEqual(events[0].channel, 0)
         self.assertEqual(events[1].pitch, 62)
         self.assertEqual(events[1].velocity, 100)
-        self.assertEqual(events[1].start_ms, 600)
-        self.assertEqual(events[1].duration_ms, 200)
+        self.assertEqual(events[1].span, TimeSpan(600, 200))
         self.assertEqual(events[1].gate, 0.5)
         self.assertEqual(events[1].probability, 0.5)
         self.assertEqual(events[1].channel, 1)

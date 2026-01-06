@@ -1,10 +1,9 @@
-from .score import NoteEvent, Score, ScoreContext, ZippedNotes
+from .score import NoteEvent, Score, ZippedNotes
 from .time import TimeSpan, bpm_to_ms
 
 __all__ = [
     "NoteEvent",
     "Score",
-    "ScoreContext",
     "TimeSpan",
     "ZippedNotes",
     "bpm_to_ms",

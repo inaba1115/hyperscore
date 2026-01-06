@@ -251,13 +251,13 @@ def quantize_fractions(
         raise AssertionError("Negative remaining")
 
     remainders = sorted(
-        enumerate(ideal),
-        key=lambda x: x[1] - base[x[0]],
+        range(len(ideal)),
+        key=lambda i: ideal[i] - base[i],
         reverse=True,
     )
 
     for i in range(remaining):
-        base[remainders[i][0]] += 1
+        base[remainders[i]] += 1
 
     return base
 

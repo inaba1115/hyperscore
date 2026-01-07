@@ -36,4 +36,4 @@ score.add_timespans(
 # ----------------
 # output
 # ----------------
-MidiExporter().export(score, "example.mid")
+MidiExporter().export(score, "minimal.mid")

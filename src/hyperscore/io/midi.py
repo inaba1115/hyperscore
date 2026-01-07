@@ -21,8 +21,15 @@ class MidiTimebase:
     """
     MIDI timebase configuration.
 
-    ticks_per_beat: MIDI resolution
-    tempo_us_per_beat: microseconds per beat
+    This class defines the mapping between real time
+    (milliseconds) and MIDI ticks.
+
+    Attributes
+    ----------
+    ticks_per_beat : int
+        MIDI resolution.
+    tempo_us_per_beat : int
+        Tempo expressed as microseconds per beat.
     """
 
     ticks_per_beat: int = 480
@@ -30,9 +37,15 @@ class MidiTimebase:
 
     @property
     def ticks_per_second(self) -> float:
+        """
+        Return the number of MIDI ticks per second.
+        """
         return self.ticks_per_beat * 1_000_000 / self.tempo_us_per_beat
 
     def ms_to_ticks_float(self, ms: int) -> float:
+        """
+        Convert milliseconds to fractional MIDI ticks.
+        """
         return ms * self.ticks_per_second / 1000.0
 
 
@@ -47,8 +60,23 @@ def quantize_times_lrm(
     timebase: MidiTimebase,
 ) -> list[int]:
     """
-    Convert absolute times (ms) to MIDI ticks using
-    Largest Remainder Method to avoid drift.
+    Quantize absolute times (milliseconds) into MIDI ticks
+    using the Largest Remainder Method (LRM).
+
+    This method ensures that the total tick sum matches
+    the rounded ideal value, avoiding cumulative timing drift.
+
+    Parameters
+    ----------
+    times_ms : sequence of int
+        Absolute times in milliseconds.
+    timebase : MidiTimebase
+        MIDI timebase configuration.
+
+    Returns
+    -------
+    list of int
+        Quantized absolute times in MIDI ticks.
     """
     floats = [timebase.ms_to_ticks_float(t) for t in times_ms]
     floors = [int(x) for x in floats]
@@ -60,7 +88,11 @@ def quantize_times_lrm(
 
     if diff > 0:
         # distribute +1 to largest remainders
-        indices = sorted(range(len(remainders)), key=lambda i: remainders[i], reverse=True)
+        indices = sorted(
+            range(len(remainders)),
+            key=lambda i: remainders[i],
+            reverse=True,
+        )
         for i in indices[:diff]:
             floors[i] += 1
 
@@ -78,7 +110,25 @@ def note_events_to_midi_messages(
     timebase: MidiTimebase,
 ) -> list[tuple[int, Message]]:
     """
-    Convert NoteEvents to absolute-time MIDI messages (ticks).
+    Convert NoteEvents into absolute-time MIDI messages.
+
+    Each NoteEvent is expanded into:
+    - a note_on message at span.start
+    - a note_off message at span.end
+
+    Absolute times are quantized globally to MIDI ticks.
+
+    Parameters
+    ----------
+    events : iterable of NoteEvent
+        Input note events.
+    timebase : MidiTimebase
+        MIDI timebase configuration.
+
+    Returns
+    -------
+    list of (int, Message)
+        Pairs of (absolute_tick, MIDI message).
     """
     # ---- build absolute ms times ----
     times_ms: list[int] = []
@@ -124,7 +174,17 @@ def note_events_to_midi_messages(
 
 def absolute_to_delta(messages: list[tuple[int, Message]]) -> list[Message]:
     """
-    Convert absolute-tick messages to delta-time messages.
+    Convert absolute-tick MIDI messages into delta-time messages.
+
+    Parameters
+    ----------
+    messages : list of (int, Message)
+        Absolute-tick MIDI messages.
+
+    Returns
+    -------
+    list of Message
+        MIDI messages with delta-time populated.
     """
     out: list[Message] = []
     last_tick = 0
@@ -143,12 +203,22 @@ def absolute_to_delta(messages: list[tuple[int, Message]]) -> list[Message]:
 
 
 class MidiExporter:
+    """
+    MIDI file exporter for TimeSpan-based NoteEvents.
+
+    This exporter converts hyperscore NoteEvents into
+    a standard MIDI file, performing global time quantization.
+    """
+
     def __init__(
         self,
         *,
         ticks_per_beat: int = 480,
         tempo_us_per_beat: int = 500_000,
     ):
+        """
+        Initialize the exporter with a given MIDI timebase.
+        """
         self.timebase = MidiTimebase(
             ticks_per_beat=ticks_per_beat,
             tempo_us_per_beat=tempo_us_per_beat,
@@ -161,6 +231,24 @@ class MidiExporter:
         *,
         channel: int | None = None,
     ) -> None:
+        """
+        Export NoteEvents to a MIDI file.
+
+        Parameters
+        ----------
+        events : iterable of NoteEvent
+            Input note events.
+        path : str or PathLike
+            Output MIDI file path.
+        channel : int or None, optional
+            If specified, only events on this channel
+            are exported.
+
+        Notes
+        -----
+        - Event ordering is derived from TimeSpan start times.
+        - MIDI is treated as a lossy output format.
+        """
         midi = MidiFile(ticks_per_beat=self.timebase.ticks_per_beat)
         track = MidiTrack()
         midi.tracks.append(track)
@@ -193,12 +281,29 @@ class MidiExporter:
 
 
 class MidiPlayer:
+    """
+    Lightweight real-time MIDI player for NoteEvents.
+
+    This player schedules MIDI messages based on TimeSpan
+    timing and sends them to a MIDI output port.
+    """
+
     def __init__(
         self,
         *,
         output: mido.ports.BaseOutput,
         timebase: MidiTimebase | None = None,
     ):
+        """
+        Initialize the MIDI player.
+
+        Parameters
+        ----------
+        output : mido output port
+            MIDI output destination.
+        timebase : MidiTimebase or None
+            Optional timebase configuration.
+        """
         self.output = output
         self.timebase = timebase or MidiTimebase()
 
@@ -208,6 +313,24 @@ class MidiPlayer:
         *,
         channel: int | None = None,
     ) -> None:
+        """
+        Play NoteEvents in real time via a MIDI output port.
+
+        Parameters
+        ----------
+        events : iterable of NoteEvent
+            Input note events.
+        channel : int or None, optional
+            If specified, only events on this channel
+            are played.
+
+        Notes
+        -----
+        - Scheduling uses wall-clock time and is not
+          sample-accurate.
+        - Intended for preview and testing, not
+          high-precision performance.
+        """
         if channel is not None:
             events = [e for e in events if e.channel == channel]
 

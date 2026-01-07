@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from os import PathLike
+from pathlib import Path
 
 import mido
 from mido import Message, MetaMessage, MidiFile, MidiTrack
@@ -155,7 +157,7 @@ class MidiExporter:
     def export(
         self,
         events: Iterable[NoteEvent],
-        path: str,
+        path: str | PathLike[str],
         *,
         channel: int | None = None,
     ) -> None:
@@ -182,7 +184,7 @@ class MidiExporter:
         for msg in absolute_to_delta(abs_msgs):
             track.append(msg)
 
-        midi.save(path)
+        midi.save(Path(path))
 
 
 # ============================================================

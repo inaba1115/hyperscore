@@ -68,16 +68,19 @@ class PitchClassSet:
     # ---------- similarity metrics ----------
 
     def jaccard(self, other: PitchClassSet) -> float:
-        inter = len(set(self.pcs) & set(other.pcs))
-        uni = len(set(self.pcs) | set(other.pcs))
+        a, b = set(self.pcs), set(other.pcs)
+        inter = len(a & b)
+        uni = len(a | b)
         return inter / uni if uni else 0.0
 
     def dice(self, other: PitchClassSet) -> float:
-        inter = len(set(self.pcs) & set(other.pcs))
-        denom = len(self.pcs) + len(other.pcs)
+        a, b = set(self.pcs), set(other.pcs)
+        inter = len(a & b)
+        denom = len(a) + len(b)
         return (2 * inter / denom) if denom else 0.0
 
     def overlap(self, other: PitchClassSet) -> float:
-        inter = len(set(self.pcs) & set(other.pcs))
-        denom = min(len(self.pcs), len(other.pcs))
+        a, b = set(self.pcs), set(other.pcs)
+        inter = len(a & b)
+        denom = min(len(a), len(b))
         return (inter / denom) if denom else 0.0

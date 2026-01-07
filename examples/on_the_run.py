@@ -1,4 +1,3 @@
-import random
 from itertools import cycle
 from pathlib import Path
 
@@ -59,7 +58,7 @@ score.add_timespans(spans, factory=on_the_run_factory)
 # --------------------------------------------------
 
 exporter = MidiExporter()
-exporter.export(score, Path("foo.mid"))
+exporter.export(score, Path("on_the_run.mid"))
 
 player = MidiPlayer(output=mido.get_output_names()[0])  # type: ignore
 player.play(score)

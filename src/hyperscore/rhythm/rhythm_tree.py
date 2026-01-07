@@ -118,6 +118,9 @@ class RhythmTransformer(Transformer):
 
 
 def parse_rhythm(text: str) -> Sequence:
+    """
+    Parse rhythm DSL into raw AST (may include Repeat / Split).
+    """
     parser = Lark(GRAMMAR, parser="lalr", transformer=RhythmTransformer())
     ast = parser.parse(text)
     assert isinstance(ast, Sequence)
@@ -131,14 +134,18 @@ def parse_rhythm(text: str) -> Sequence:
 
 def normalize(node: Node) -> Node:
     """
-    Eliminate Repeat / Split.
-    Result AST contains only Atom / Group / Sequence.
+    Normalize rhythm AST.
+
+    Eliminates:
+      - Repeat
+      - Split
+
+    Result invariant:
+      - AST contains only Atom / Group / Sequence
+      - Sequence.items NEVER contains nested Sequence
     """
     if isinstance(node, Atom):
         return node
-
-    if isinstance(node, Sequence):
-        return _normalize_sequence(node)
 
     if isinstance(node, Group):
         return Group(
@@ -146,28 +153,47 @@ def normalize(node: Node) -> Node:
             body=_normalize_sequence(node.body),
         )
 
+    if isinstance(node, Sequence):
+        return _normalize_sequence(node)
+
     if isinstance(node, Split):
         base = normalize(node.node)
         if not isinstance(base, Atom):
             raise TypeError("Split base must normalize to Atom")
+
         ones = [Atom(Fraction(1, 1)) for _ in range(node.parts)]
-        return Group(weight=base, body=Sequence(ones))
+        return Group(
+            weight=base,
+            body=Sequence(ones),
+        )
 
     if isinstance(node, Repeat):
         base = normalize(node.node)
-        return Sequence([base for _ in range(node.times)])
+
+        items: list[Node] = []
+        for _ in range(node.times):
+            if isinstance(base, Sequence):
+                # flatten
+                items.extend(base.items)
+            else:
+                items.append(base)
+
+        return Sequence(items)
 
     raise TypeError(node)
 
 
 def _normalize_sequence(seq: Sequence) -> Sequence:
     items: list[Node] = []
+
     for item in seq.items:
         n = normalize(item)
         if isinstance(n, Sequence):
+            # flatten nested sequence
             items.extend(n.items)
         else:
             items.append(n)
+
     return Sequence(items)
 
 
@@ -177,6 +203,10 @@ def _normalize_sequence(seq: Sequence) -> Sequence:
 
 
 def node_weight(node: Node) -> Fraction:
+    """
+    Weight of a node relative to its parent.
+    Assumes normalized AST.
+    """
     if isinstance(node, Atom):
         return node.value
 
@@ -193,6 +223,10 @@ def node_weight(node: Node) -> Fraction:
 
 
 def expand_sequence(seq: Sequence) -> list[Fraction]:
+    """
+    Expand normalized Sequence into relative duration fractions.
+    Sum of result == 1.
+    """
     weights = [node_weight(n) for n in seq.items]
     total = sum(weights)
 
@@ -211,17 +245,18 @@ def expand_sequence(seq: Sequence) -> list[Fraction]:
             inner = expand_sequence(node.body)
             out.extend(share * d for d in inner)
 
-        elif isinstance(node, Sequence):
-            inner = expand_sequence(node)
-            out.extend(share * d for d in inner)
-
         else:
-            raise TypeError(node)
+            # normalized invariant should prevent this
+            raise TypeError(f"Unexpected node: {node!r}")
 
     return out
 
 
 def expand_to_fractions(ast: Sequence) -> list[Fraction]:
+    """
+    High-level API:
+    normalized Sequence → duration fractions (sum == 1)
+    """
     durations = expand_sequence(ast)
     if sum(durations) != Fraction(1, 1):
         raise AssertionError("Duration sum is not 1")
@@ -238,8 +273,16 @@ def quantize_fractions(
     *,
     total: int,
 ) -> list[int]:
+    """
+    Quantize duration fractions into integer ticks using
+    Largest Remainder Method.
+
+    Guarantees:
+      - sum(result) == total
+    """
     if total <= 0:
         raise ValueError("total must be positive")
+
     if sum(durations) != Fraction(1, 1):
         raise ValueError("durations must sum to 1")
 
@@ -263,25 +306,8 @@ def quantize_fractions(
 
 
 # ============================================================
-# TimeSpan API (final product)
+# TimeSpan API (public)
 # ============================================================
-
-
-def fractions_to_timespans(
-    durations: Seq[Fraction],
-    *,
-    total: int,
-    start: int = 0,
-) -> list[TimeSpan]:
-    ticks = quantize_fractions(durations, total=total)
-
-    t = start
-    spans: list[TimeSpan] = []
-    for d in ticks:
-        spans.append(TimeSpan(start=t, duration=d))
-        t += d
-
-    return spans
 
 
 def rhythm_ast_to_timespans(
@@ -292,10 +318,24 @@ def rhythm_ast_to_timespans(
 ) -> list[TimeSpan]:
     """
     High-level API:
-    rhythm DSL → TimeSpan sequence
+
+        rhythm DSL
+          → AST
+          → normalized AST
+          → duration fractions
+          → quantized ticks
+          → TimeSpan sequence
     """
     norm = normalize(ast)
     assert isinstance(norm, Sequence)
 
     fractions = expand_to_fractions(norm)
-    return fractions_to_timespans(fractions, total=total, start=start)
+    ticks = quantize_fractions(fractions, total=total)
+
+    t = start
+    spans: list[TimeSpan] = []
+    for d in ticks:
+        spans.append(TimeSpan(start=t, duration=d))
+        t += d
+
+    return spans

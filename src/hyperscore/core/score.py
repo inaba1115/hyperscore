@@ -249,7 +249,6 @@ class Score(Generic[EventT], Iterable[EventT]):
         end_ms: int | None = None,
     ) -> list[EventT]:
         if end_ms is None:
-            # 明示的に「start 以降すべて」
             self._ensure_sorted()
             return [e for e in self._sorted_by_start if e.span.start >= start_ms]
 

@@ -20,6 +20,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
     "ruff>=0.14.10",
     "ty>=0.0.8",
 ]
@@ -29,4 +30,24 @@ line-length = 120
 
 [tool.ruff.lint]
 extend-select = ["I", "RUF", "UP", "TID", "C", "SIM", "PTH"]
-extend-ignore = ["C901", "F401", "F403", "E722"]
+extend-ignore = ["C901", "F401", "F403", "E722", "RUF007"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["hyperscore"]
+omit = [
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+precision = 2

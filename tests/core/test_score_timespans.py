@@ -111,7 +111,7 @@ def test_events_between_equivalent_to_span():
     ]
     score.add_timespans(spans, factory=make_event)
 
-    a = score.events_between(start_ms=5, end_ms=20)
+    a = score.events_between(start=5, end=20)
     b = score.events_between_span(TimeSpan(5, 15))
 
     assert [e.span.start for e in a] == [e.span.start for e in b]
@@ -131,7 +131,7 @@ def test_events_between_open_ended():
     ]
     score.add_timespans(spans, factory=make_event)
 
-    result = score.events_between(start_ms=10)
+    result = score.events_between(start=10)
     starts = [e.span.start for e in result]
 
     assert starts == [10, 20]

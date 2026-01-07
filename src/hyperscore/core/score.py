@@ -331,26 +331,39 @@ class Score(Generic[EventT], Iterable[EventT]):
 
     def events_between(
         self,
-        start_ms: int = 0,
-        end_ms: int | None = None,
+        start: int = 0,
+        end: int | None = None,
     ) -> list[EventT]:
         """
-        Return events starting within the given time window.
+        Return events whose start time lies within the given time window.
 
         Parameters
         ----------
-        start_ms : int
-            Window start in milliseconds.
-        end_ms : int or None
-            Window end in milliseconds.
-            If None, all events after start_ms are returned.
+        start : int
+            Inclusive start position on the score time axis.
+        end : int or None
+            Exclusive end position.
+            If None, all events starting at or after ``start`` are returned.
+
+        Returns
+        -------
+        list of EventT
+            Events matching the given time range.
+
+        Notes
+        -----
+        - Time values are interpreted in the same unit used by TimeSpan
+          (typically milliseconds or ticks).
+        - This method filters by event start time, not full TimeSpan overlap.
+          For overlap-based queries, use ``events_between_span()``.
+        - The returned list is ordered by start time.
         """
-        if end_ms is None:
+        if end is None:
             self._ensure_sorted()
-            return [e for e in self._sorted_by_start if e.span.start >= start_ms]
+            return [e for e in self._sorted_by_start if e.span.start >= start]
 
         span = TimeSpan(
-            start=start_ms,
-            duration=end_ms - start_ms,
+            start=start,
+            duration=end - start,
         )
         return self.events_between_span(span)

@@ -1,108 +1,89 @@
-from __future__ import annotations
-
 from fractions import Fraction
 
-from hyperscore.rhythm.rhythm_tree import Sequence, expand_to_fractions, normalize, parse_rhythm
+import pytest
+
+from hyperscore.rhythm.rhythm_tree import (
+    Sequence,
+    expand_to_fractions,
+    normalize,
+    parse_rhythm,
+)
 
 # ============================================================
 # helpers
 # ============================================================
 
 
-def expand(text: str) -> list[Fraction]:
-    """
-    Parse → normalize → expand helper.
-    """
-    ast = parse_rhythm(text)
-
+def expand(expr: str) -> list[Fraction]:
+    ast = parse_rhythm(expr)
     norm = normalize(ast)
     assert isinstance(norm, Sequence)
-
     return expand_to_fractions(norm)
 
 
 # ============================================================
-# basic properties
+# basic expansion
 # ============================================================
 
 
-def test_expand_sum_is_one():
-    """
-    Expanded fractions must sum to exactly 1.
-    """
-    fracs = expand("1 1 1 1")
-    assert sum(fracs) == Fraction(1, 1)
+def test_single_atom():
+    assert expand("1") == [Fraction(1, 1)]
 
 
-def test_expand_single_atom():
-    """
-    Single atom expands to [1].
-    """
-    fracs = expand("1")
-    assert fracs == [Fraction(1, 1)]
+def test_simple_sequence():
+    assert expand("1 1") == [
+        Fraction(1, 2),
+        Fraction(1, 2),
+    ]
+
+
+def test_weighted_sequence():
+    assert expand("1 2") == [
+        Fraction(1, 3),
+        Fraction(2, 3),
+    ]
 
 
 # ============================================================
-# grouping
+# group expansion
 # ============================================================
 
 
-def test_expand_simple_group():
-    """
-    Group distributes weight to its body.
-    1[1 1] -> two equal parts
-    """
-    fracs = expand("1[1 1]")
-    assert fracs == [Fraction(1, 2), Fraction(1, 2)]
+def test_simple_group():
+    d = expand("2[1 1]")
+    assert d == [
+        Fraction(1, 2),
+        Fraction(1, 2),
+    ]
 
 
-def test_expand_group_weight():
-    """
-    Group weight affects distribution.
-    2[1 1] inside total 2 -> still equal internally.
-    """
-    fracs = expand("2[1 1]")
-    assert fracs == [Fraction(1, 2), Fraction(1, 2)]
-
-
-def test_expand_mixed_atoms_and_group():
-    """
-    Atoms and groups share outer weight.
-    """
-    fracs = expand("1 1[1 1]")
-    # total outer weights: 1 + 1 = 2
-    # first atom: 1/2
-    # group: 1/2 split into two
-    assert fracs == [
+def test_nested_group():
+    d = expand("2[1 1[1 1]]")
+    # outer group distributes its share equally
+    # inner group splits its own share evenly
+    assert d == [
         Fraction(1, 2),
         Fraction(1, 4),
         Fraction(1, 4),
     ]
 
 
-# ============================================================
-# repeat / split sugar
-# ============================================================
-
-
-def test_expand_repeat():
-    """
-    Repeat sugar must expand to repeated atoms.
-    """
-    fracs = expand("1*3")
-    assert fracs == [
+def test_group_with_weighted_body():
+    d = expand("3[1 2]")
+    assert d == [
         Fraction(1, 3),
-        Fraction(1, 3),
-        Fraction(1, 3),
+        Fraction(2, 3),
     ]
 
 
-def test_expand_split():
-    """
-    Split sugar must expand to equal parts.
-    """
-    fracs = expand("1%4")
-    assert fracs == [
+# ============================================================
+# repeat
+# ============================================================
+
+
+def test_repeat_atom():
+    d = expand("1*4")
+    assert d == [
         Fraction(1, 4),
         Fraction(1, 4),
         Fraction(1, 4),
@@ -110,37 +91,9 @@ def test_expand_split():
     ]
 
 
-# ============================================================
-# nesting
-# ============================================================
-
-
-def test_expand_nested_group():
-    """
-    Nested groups must multiply proportions correctly.
-    """
-    fracs = expand("1[1[1 1] 1]")
-    # structure:
-    # outer group -> total 2
-    # first inner group weight 1 -> half
-    #   inner splits into two -> each 1/4
-    # second atom -> half
-    assert fracs == [
-        Fraction(1, 4),
-        Fraction(1, 4),
-        Fraction(1, 2),
-    ]
-
-
-def test_expand_complex_structure():
-    """
-    More complex nested + repeat structure.
-    """
-    fracs = expand("(1[1 2])*2")
-    # inner: 1[1 2] -> [1/3, 2/3]
-    # repeated twice, total 4 elements
-    # each repetition gets half of total
-    assert fracs == [
+def test_repeat_sequence_is_flattened():
+    d = expand("(1 2)*2")
+    assert d == [
         Fraction(1, 6),
         Fraction(2, 6),
         Fraction(1, 6),
@@ -149,14 +102,62 @@ def test_expand_complex_structure():
 
 
 # ============================================================
-# safety
+# split (Atom only)
 # ============================================================
 
 
-def test_expand_deterministic():
-    """
-    Expansion must be deterministic.
-    """
-    a = expand("1[1 2]")
-    b = expand("1[1 2]")
-    assert a == b
+def test_split_atom():
+    d = expand("1%4")
+    assert d == [
+        Fraction(1, 4),
+        Fraction(1, 4),
+        Fraction(1, 4),
+        Fraction(1, 4),
+    ]
+
+
+def test_split_inside_group():
+    d = expand("2[1%2 1]")
+    assert d == [
+        Fraction(1, 4),
+        Fraction(1, 4),
+        Fraction(1, 2),
+    ]
+
+
+def test_split_on_sequence_is_invalid():
+    with pytest.raises(TypeError):
+        expand("(1 1)*2 %4")
+
+
+# ============================================================
+# zero weight handling
+# ============================================================
+
+
+def test_zero_weight_is_allowed():
+    d = expand("0 1")
+    assert d == [
+        Fraction(0, 1),
+        Fraction(1, 1),
+    ]
+
+
+def test_all_zero_weight_raises():
+    with pytest.raises(ValueError):
+        expand("0 0")
+
+
+# ============================================================
+# structure assumptions
+# ============================================================
+
+
+def test_normalized_sequence_is_flat():
+    ast = parse_rhythm("(1 2)*2")
+    norm = normalize(ast)
+    assert isinstance(norm, Sequence)
+
+    # no nested Sequence remains
+    for item in norm.items:
+        assert not isinstance(item, Sequence)

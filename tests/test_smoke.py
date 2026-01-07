@@ -87,20 +87,17 @@ def test_smoke_zipped_notes() -> None:
     score: Score[NoteEvent] = Score()
 
     score.add(
-        pitch=[60, 62, 64],
-        velocity=[90],
-        duration=[100],
+        pitch=[60, 64, 67, 71],  # C major 7 chord tones
+        velocity=[100],
+        duration=[125],
         channel=[0],
         event_factory=lambda **kw: NoteEvent(
             pitch=kw["pitch"],
             velocity=kw["velocity"],
-            span=TimeSpan(
-                start=kw["span"].start if "span" in kw else 0,
-                duration=kw["span"].duration if "span" in kw else kw["duration"],
-            ),
+            span=kw["span"],
             channel=kw["channel"],
         ),
     )
 
     events = list(score)
-    assert len(events) == 3
+    assert len(events) == 4

@@ -10,6 +10,7 @@ This example focuses on:
 - conversion into concrete time spans
 """
 
+from itertools import cycle
 from pathlib import Path
 
 from hyperscore import Score, parse_rhythm
@@ -46,7 +47,7 @@ spans = rhythm_ast_to_timespans(
 # pitch (intentionally trivial)
 # --------------------------------------------------
 
-pitch_cycle = iter([60, 62, 64, 67])
+pitch_cycle = cycle([60, 62, 64, 67])
 
 # --------------------------------------------------
 # score

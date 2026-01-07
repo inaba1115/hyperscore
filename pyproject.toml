@@ -30,7 +30,7 @@ line-length = 120
 
 [tool.ruff.lint]
 extend-select = ["I", "RUF", "UP", "TID", "C", "SIM", "PTH"]
-extend-ignore = ["C901", "F401", "F403", "E722"]
+extend-ignore = ["C901", "F401", "F403", "E722", "RUF007"]
 
 [tool.pytest.ini_options]
 minversion = "9.0"

@@ -7,62 +7,56 @@ Time is represented uniformly using immutable time spans, pitch is handled as pi
 
 ## Minimal example
 
+This minimal example demonstrates the core hyperscore workflow:
+selecting pitch material using theory objects, describing rhythm
+structurally, generating time-based events, and exporting the result
+to MIDI.
+
 ```python
-from hyperscore import CHORDS, Score, ZippedNotes, parse_rhythm
-from hyperscore.core import NoteEvent, TimeSpan, bpm_to_ms
+from hyperscore import CHORDS, Score, parse_rhythm
+from hyperscore.core import NoteEvent, bpm_to_ms
 from hyperscore.io import MidiExporter
 from hyperscore.rhythm import rhythm_ast_to_timespans
-```
 
-### 1. Define harmonic material
+# ----------------
+# theory
+# ----------------
+chord = CHORDS["major7"]
 
-```python
-# Use a predefined chord as a pitch-class reference
-chord = CHORDS["major"]
-```
+pitches = [n for n in range(60, 72) if n % 12 in chord.intervals]
+pitch_iter = iter(pitches)
 
-### 2. Describe rhythm structurally
-
-```python
-# Parse a simple rhythm DSL
+# ----------------
+# rhythm
+# ----------------
 ast = parse_rhythm("1*4")
-
-# Convert beats to absolute time (milliseconds)
 total = int(bpm_to_ms(120, 1))
-
-# Expand rhythm into explicit TimeSpans
 spans = rhythm_ast_to_timespans(ast, total=total)
-```
 
-### 3. Build a score
-
-```python
-score: Score[NoteEvent] = Score()
-
-pitch_cycle = iter([60, 62, 64, 67])  # C D E G
+# ----------------
+# score
+# ----------------
+score = Score()
 
 score.add_timespans(
     spans,
     factory=lambda span: NoteEvent(
-        pitch=next(pitch_cycle),
+        pitch=next(pitch_iter),
         velocity=100,
         span=span,
         channel=0,
     ),
 )
+
+# ----------------
+# output
+# ----------------
+MidiExporter().export(score, "example.mid")
 ```
 
-The `Score` stores events on an explicit time axis.  
-No tempo, meter, or performance semantics are assumed.
-
-### 4. Export to MIDI
-
-```python
-exporter = MidiExporter()
-exporter.export(score, "example.mid")
-```
-
-This writes a standard MIDI file using global time quantization.
+This example intentionally avoids musical interpretation and focuses on
+structural composition. Pitch, rhythm, and time are treated as
+independent layers that are combined explicitly.
 
 ---
 
@@ -82,24 +76,35 @@ For more advanced usage, see:
 
 ## Optional: ZippedNotes shortcut
 
+For simple sequential note generation without explicit TimeSpan
+construction, hyperscore provides the ZippedNotes convenience API.
+
+This approach is suitable for basic sketches or quick tests, but offers
+less control than TimeSpan-based workflows.
+
 ```python
+from hyperscore import Score
+from hyperscore.core import NoteEvent
+
 score = Score()
 
 score.add(
-    pitch=[60, 62, 64, 67],
+    pitch=[60, 64, 67, 71],  # C major 7 chord tones
     velocity=[100],
-    duration=[250],
+    duration=[125],
     channel=[0],
     event_factory=lambda **kw: NoteEvent(
         pitch=kw["pitch"],
         velocity=kw["velocity"],
-        span=TimeSpan(0, kw["duration"]),
+        span=kw["span"],
         channel=kw["channel"],
     ),
 )
 ```
 
-This is a convenience API; for complex timing, prefer `TimeSpan`-based workflows.
+For complex timing, transformations, or algorithmic rhythm generation,
+prefer TimeSpan-based workflows using parse_rhythm,
+rhythm_ast_to_timespans, and TimeSpanPipeline.
 
 ---
 

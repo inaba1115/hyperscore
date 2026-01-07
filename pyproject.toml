@@ -1,7 +1,7 @@
 [project]
 name = "hyperscore"
 version = "0.1.0.dev0"
-description = "Add your description here"
+description = "Structural music composition framework"
 readme = "README.md"
 authors = [
     { name = "inaba1115", email = "inaba1115@gmail.com" }
@@ -11,6 +11,12 @@ dependencies = [
     "lark>=1.3.1",
     "mido>=1.3.3",
     "python-rtmidi>=1.5.8",
+]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Scientific/Engineering",
 ]
 
 [build-system]

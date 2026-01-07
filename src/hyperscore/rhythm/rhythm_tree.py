@@ -155,7 +155,15 @@ def normalize(node: Node) -> Node:
 
     if isinstance(node, Repeat):
         base = normalize(node.node)
-        return Sequence([base for _ in range(node.times)])
+
+        items: list[Node] = []
+        for _ in range(node.times):
+            if isinstance(base, Sequence):
+                items.extend(base.items)
+            else:
+                items.append(base)
+
+        return Sequence(items)
 
     raise TypeError(node)
 

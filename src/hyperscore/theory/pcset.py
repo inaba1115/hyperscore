@@ -74,8 +74,10 @@ class PitchClassSet:
 
     def dice(self, other: PitchClassSet) -> float:
         inter = len(set(self.pcs) & set(other.pcs))
-        return 2 * inter / (len(self.pcs) + len(other.pcs))
+        denom = len(self.pcs) + len(other.pcs)
+        return (2 * inter / denom) if denom else 0.0
 
     def overlap(self, other: PitchClassSet) -> float:
         inter = len(set(self.pcs) & set(other.pcs))
-        return inter / min(len(self.pcs), len(other.pcs))
+        denom = min(len(self.pcs), len(other.pcs))
+        return (inter / denom) if denom else 0.0

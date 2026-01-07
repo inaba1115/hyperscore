@@ -1,3 +1,21 @@
+"""
+minimal.py
+
+Minimal, end-to-end example of the hyperscore workflow.
+
+This script mirrors the "Minimal example" section in the README and
+demonstrates the complete pipeline:
+
+- selecting pitch material using theory objects
+- describing rhythm structurally
+- generating time-based events
+- exporting the result to MIDI
+
+For focused demonstrations of individual concepts, see:
+- rhythm_dsl.py          (structural rhythm description)
+- timespan_pipeline.py  (time-domain transformations)
+"""
+
 from hyperscore import CHORDS, Score, parse_rhythm
 from hyperscore.core import NoteEvent, bpm_to_ms
 from hyperscore.io import MidiExporter

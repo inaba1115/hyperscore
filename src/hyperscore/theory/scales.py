@@ -12,13 +12,33 @@ from .pcset import PitchClass, PitchClassSet
 @dataclass(frozen=True)
 class Scale:
     """
-    Musical scale as a pitch-class set (orderless).
+    Musical scale represented as a pitch-class set.
+
+    A Scale is an unordered collection of pitch classes.
+    It does not encode melodic order, mode rotation,
+    or tonal function.
+
+    This class is primarily intended for:
+    - harmonic constraints
+    - pitch filtering
+    - similarity and set-based analysis
     """
 
     name: str
     pcs: PitchClassSet
 
     def transpose(self, n: int, *, name: str | None = None) -> Scale:
+        """
+        Transpose the scale by ``n`` semitones (mod 12).
+
+        Parameters
+        ----------
+        n : int
+            Transposition interval in semitones.
+        name : str or None, optional
+            Optional name for the transposed scale.
+            If None, a derived name is generated.
+        """
         new_name = name if name is not None else f"{self.name}_+{n}"
         return Scale(new_name, self.pcs.transpose(n))
 
@@ -27,6 +47,11 @@ class Scale:
 class Chord:
     """
     Chord defined by pitch-class intervals.
+
+    A Chord is represented as a PitchClassSet of intervals
+    relative to an implicit root (0).
+
+    This representation is orderless and register-agnostic.
     """
 
     name: str
@@ -42,17 +67,38 @@ class Chord:
 class ScaleOrdered:
     """
     Ordered pitch-class sequence.
-    Used for modes, melodic generation, etc.
+
+    This class explicitly represents pitch-class order and
+    is intended for:
+
+    - mode rotation
+    - melodic generation
+    - ordered traversal of scales
+
+    Unlike Scale, this representation is sensitive to order.
     """
 
     name: str
     pcs: tuple[PitchClass, ...]
 
     def transpose(self, n: int, *, name: str | None = None) -> ScaleOrdered:
+        """
+        Transpose the ordered scale by ``n`` semitones (mod 12).
+        """
         new_name = name if name is not None else f"{self.name}_+{n}"
         return ScaleOrdered(new_name, tuple((pc + n) % 12 for pc in self.pcs))
 
     def rotate_mode(self, k: int, *, name: str | None = None) -> ScaleOrdered:
+        """
+        Rotate the scale to produce a mode.
+
+        Parameters
+        ----------
+        k : int
+            Rotation index.
+        name : str or None, optional
+            Optional name for the rotated mode.
+        """
         if not self.pcs:
             return self
         k = k % len(self.pcs)
@@ -61,6 +107,11 @@ class ScaleOrdered:
         return ScaleOrdered(new_name, rotated)
 
     def normalize_to_zero(self) -> ScaleOrdered:
+        """
+        Normalize the scale so that the first pitch class is zero.
+
+        This is useful for comparing modes independent of transposition.
+        """
         if not self.pcs:
             return self
         root = self.pcs[0]
@@ -70,6 +121,9 @@ class ScaleOrdered:
         )
 
     def as_set(self) -> PitchClassSet:
+        """
+        Convert the ordered scale into a pitch-class set.
+        """
         return PitchClassSet.from_seq(self.pcs)
 
 
@@ -80,8 +134,9 @@ class ScaleOrdered:
 
 def ordered_from_scale(scale: Scale) -> ScaleOrdered:
     """
-    Convert a scale (set) into an ordered scale
-    using canonical ascending pitch-class order.
+    Convert an unordered Scale into an ordered representation.
+
+    The resulting ScaleOrdered uses ascending pitch-class order.
     """
     return ScaleOrdered(scale.name, scale.pcs.pcs)
 
@@ -90,6 +145,11 @@ def ordered_from_scale(scale: Scale) -> ScaleOrdered:
 # Scale definitions
 # ============================================================
 
+# Collection of predefined scales.
+#
+# These definitions are provided as a convenience and
+# reference set. They are not exhaustive and do not imply
+# stylistic or theoretical endorsement.
 SCALES: dict[str, Scale] = {
     # Five-note scales
     "min_pent": Scale("min_pent", PitchClassSet.from_seq([0, 3, 5, 7, 10])),
@@ -173,6 +233,10 @@ SCALES: dict[str, Scale] = {
 # Chord definitions
 # ============================================================
 
+# Collection of predefined chords.
+#
+# Chords are represented as pitch-class interval sets
+# relative to an implicit root.
 CHORDS: dict[str, Chord] = {
     # Major
     "major": Chord("major", PitchClassSet.from_seq([0, 4, 7])),
@@ -221,7 +285,7 @@ CHORDS: dict[str, Chord] = {
     "seven_sus2": Chord("seven_sus2", PitchClassSet.from_seq([0, 2, 7, 10])),
     "seven_sus4": Chord("seven_sus4", PitchClassSet.from_seq([0, 5, 7, 10])),
     "nine_sus4": Chord("nine_sus4", PitchClassSet.from_seq([0, 5, 7, 10, 14])),
-    # Questionable
+    # Questionable / extended
     "seven_flat10": Chord("seven_flat10", PitchClassSet.from_seq([0, 4, 7, 10, 15])),
     "nine_sharp5": Chord("nine_sharp5", PitchClassSet.from_seq([0, 1, 13])),
     "minor9sharp5": Chord("minor9sharp5", PitchClassSet.from_seq([0, 1, 14])),

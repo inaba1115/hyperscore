@@ -4,6 +4,23 @@ from hyperscore.core.time import TimeSpan
 
 
 def gate(ratio: float):
+    """
+    Truncate a TimeSpan by a fixed ratio.
+
+    This transform shortens the duration of a TimeSpan
+    while preserving its start position.
+
+    Parameters
+    ----------
+    ratio : float
+        Duration multiplier (e.g. 0.5 halves the duration).
+
+    Returns
+    -------
+    callable
+        A TimeSpan transform.
+    """
+
     def f(span: TimeSpan) -> TimeSpan:
         return TimeSpan(
             start=span.start,
@@ -15,9 +32,26 @@ def gate(ratio: float):
 
 def probability(p: float):
     """
-    Note:
-        Uses Python's global random generator.
-        Set random.seed(...) for reproducible results.
+    Probabilistically drop TimeSpans.
+
+    With probability ``p``, the input TimeSpan is kept.
+    Otherwise, it is dropped (returns None).
+
+    Notes
+    -----
+    - Uses Python's global random generator.
+    - Call ``random.seed(...)`` for reproducible results.
+    - Intended for stochastic filtering, not deterministic logic.
+
+    Parameters
+    ----------
+    p : float
+        Probability of keeping the TimeSpan (0.0-1.0).
+
+    Returns
+    -------
+    callable
+        A TimeSpan transform.
     """
 
     def f(span: TimeSpan) -> TimeSpan | None:
@@ -27,6 +61,22 @@ def probability(p: float):
 
 
 def shift(delta: int):
+    """
+    Shift a TimeSpan along the time axis.
+
+    Parameters
+    ----------
+    delta : int
+        Time shift in milliseconds.
+        Positive values move the span forward in time,
+        negative values move it backward.
+
+    Returns
+    -------
+    callable
+        A TimeSpan transform.
+    """
+
     def f(span: TimeSpan) -> TimeSpan:
         return span.shift(delta)
 
@@ -34,6 +84,25 @@ def shift(delta: int):
 
 
 def stretch(factor: float):
+    """
+    Stretch or compress a TimeSpan duration.
+
+    The start position is preserved.
+    Only the duration is scaled.
+
+    Parameters
+    ----------
+    factor : float
+        Duration scaling factor.
+        Values > 1.0 stretch the span,
+        values < 1.0 compress it.
+
+    Returns
+    -------
+    callable
+        A TimeSpan transform.
+    """
+
     def f(span: TimeSpan) -> TimeSpan:
         return span.stretch(factor)
 

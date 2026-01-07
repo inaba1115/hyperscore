@@ -24,10 +24,15 @@ def test_smoke_basic_pipeline(tmp_path: Path) -> None:
     # ----------------
     # theory
     # ----------------
-    chord = CHORDS["major"]
+    chord = CHORDS["major7"]
 
-    pcs = PitchClassSet.from_seq([0, 4, 7])
+    pcs = PitchClassSet.from_seq([0, 4, 7, 11])
     assert pcs.jaccard(chord.intervals) == 1.0
+
+    pitches = [n for n in range(60, 72) if n % 12 in chord.intervals]
+    assert pitches, "no pitches selected from chord"
+
+    pitch_iter = iter(pitches)
 
     # ----------------
     # rhythm
@@ -43,12 +48,10 @@ def test_smoke_basic_pipeline(tmp_path: Path) -> None:
     # ----------------
     score: Score[NoteEvent] = Score()
 
-    pitch_cycle = iter([60, 62, 64, 67])
-
     score.add_timespans(
         spans,
         factory=lambda span: NoteEvent(
-            pitch=next(pitch_cycle),
+            pitch=next(pitch_iter),
             velocity=100,
             span=span,
             channel=0,

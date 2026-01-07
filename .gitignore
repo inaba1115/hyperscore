@@ -24,3 +24,6 @@ __marimo__/
 
 # mid
 *.mid
+
+# pytest-cov
+.coverage

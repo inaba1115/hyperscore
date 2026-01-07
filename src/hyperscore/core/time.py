@@ -36,12 +36,18 @@ class TimeSpan:
 
 def bpm_to_ms(bpm: float, note_division: float = 1.0) -> float:
     """
-    BPM -> milliseconds for a note length
+    Convert beats at a given BPM into milliseconds.
 
-    note_division:
-        1.0 = quarter note
-        0.5 = eighth note
-        0.25 = sixteenth note
-        2.0 = half note
+    Parameters
+    ----------
+    bpm : float
+        Tempo in beats per minute.
+    beats : float, optional
+        Number of beats. Default is 1.0.
+
+    Returns
+    -------
+    float
+        Duration in milliseconds.
     """
     return 60_000.0 / bpm * note_division

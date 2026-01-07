@@ -1,16 +1,16 @@
 # hyperscore
 
-**hyperscore** is a structural music composition framework that models music as explicit, composable structure rather than notation or performance.  
-Time is represented uniformly using immutable time spans, pitch is handled as pitch-class structure independent of register, and rhythm is expressed as relative proportions resolved into concrete time only when needed. External formats such as MIDI are treated as lossy boundaries, not as the source of truth. hyperscore is designed for experimentation, analysis, and integration with algorithmic systems, rather than for score engraving or DAW-style workflows.
+**hyperscore** is a structural music composition framework that models music as explicit, composable structure rather than notation or performance.
+
+Time is represented uniformly using immutable time spans, pitch is handled as pitch-class structure independent of register, and rhythm is expressed as relative proportions that are resolved into concrete time only when needed. External formats such as MIDI are treated as lossy boundaries rather than as the source of truth.
+
+hyperscore is designed for experimentation, analysis, and integration with algorithmic systems, rather than for score engraving or DAW-style workflows.
 
 ---
 
 ## Minimal example
 
-This minimal example demonstrates the core hyperscore workflow:
-selecting pitch material using theory objects, describing rhythm
-structurally, generating time-based events, and exporting the result
-to MIDI.
+This minimal example demonstrates the core hyperscore workflow: selecting pitch material using theory objects, describing rhythm structurally, generating time-based events, and exporting the result to MIDI.
 
 ```python
 from hyperscore import CHORDS, Score, parse_rhythm
@@ -54,9 +54,7 @@ score.add_timespans(
 MidiExporter().export(score, "example.mid")
 ```
 
-This example intentionally avoids musical interpretation and focuses on
-structural composition. Pitch, rhythm, and time are treated as
-independent layers that are combined explicitly.
+This example intentionally avoids musical interpretation and focuses on structural composition. Pitch, rhythm, and time are treated as independent layers that are combined explicitly.
 
 ---
 
@@ -76,11 +74,9 @@ For more advanced usage, see:
 
 ## Optional: ZippedNotes shortcut
 
-For simple sequential note generation without explicit TimeSpan
-construction, hyperscore provides the ZippedNotes convenience API.
+For simple sequential note generation without explicit TimeSpan construction, hyperscore provides the `ZippedNotes` convenience API.
 
-This approach is suitable for basic sketches or quick tests, but offers
-less control than TimeSpan-based workflows.
+This approach is suitable for basic sketches or quick tests, but offers less control than TimeSpan-based workflows.
 
 ```python
 from hyperscore import Score
@@ -102,9 +98,7 @@ score.add(
 )
 ```
 
-For complex timing, transformations, or algorithmic rhythm generation,
-prefer TimeSpan-based workflows using parse_rhythm,
-rhythm_ast_to_timespans, and TimeSpanPipeline.
+For complex timing, transformations, or algorithmic rhythm generation, prefer TimeSpan-based workflows using `parse_rhythm`, `rhythm_ast_to_timespans`, and `TimeSpanPipeline`.
 
 ---
 
@@ -115,5 +109,4 @@ rhythm_ast_to_timespans, and TimeSpanPipeline.
 - Experimental / research-oriented
 - API may evolve between minor versions
 
-hyperscore favors clarity of structure and explicitness of time
-over completeness or stylistic prescription.
+hyperscore favors clarity of structure and explicitness of time over completeness or stylistic prescription.

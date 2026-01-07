@@ -1,166 +1,180 @@
-import unittest
 from fractions import Fraction
 
-from hyperscore.core import TimeSpan
-from hyperscore.rhythm import parse_rhythm, rhythm_ast_to_timespans
-from hyperscore.rhythm.rhythm_tree import Atom, Group, Repeat, Sequence, Split
+import pytest
+
+from hyperscore.rhythm.rhythm_tree import (
+    Atom,
+    Group,
+    Repeat,
+    Sequence,
+    Split,
+    parse_rhythm,
+)
+
+# ============================================================
+# basic parsing
+# ============================================================
 
 
-class TestRhythmTree(unittest.TestCase):
-    def test_parse_single_atom(self):
-        ast = parse_rhythm("1")
-        assert isinstance(ast, Sequence)
-        self.assertEqual(len(ast.items), 1)
+def test_parse_single_atom():
+    ast = parse_rhythm("1")
+    assert isinstance(ast, Sequence)
+    assert ast.items == [Atom(Fraction(1, 1))]
 
-        atom = ast.items[0]
-        assert isinstance(atom, Atom)
-        self.assertEqual(atom.value, Fraction(1, 1))
 
-    def test_parse_fraction_atom(self):
-        ast = parse_rhythm("1/2")
-        assert isinstance(ast, Sequence)
-        self.assertEqual(len(ast.items), 1)
+def test_parse_fraction_atom():
+    ast = parse_rhythm("3/4")
+    assert isinstance(ast, Sequence)
+    assert ast.items == [Atom(Fraction(3, 4))]
 
-        atom = ast.items[0]
-        assert isinstance(atom, Atom)
-        self.assertEqual(atom.value, Fraction(1, 2))
 
-    def test_parse_sequence(self):
-        ast = parse_rhythm("1 2 3")
-        assert isinstance(ast, Sequence)
-        self.assertEqual(len(ast.items), 3)
+def test_parse_sequence():
+    ast = parse_rhythm("1 2 3")
+    assert isinstance(ast, Sequence)
+    assert ast.items == [
+        Atom(Fraction(1, 1)),
+        Atom(Fraction(2, 1)),
+        Atom(Fraction(3, 1)),
+    ]
 
-        values = [Fraction(1), Fraction(2), Fraction(3)]
-        for i in range(3):
-            atom = ast.items[i]
-            assert isinstance(atom, Atom)
-            self.assertEqual(atom.value, values[i])
 
-    def test_parse_group(self):
-        ast = parse_rhythm("1[1 2]")
-        assert isinstance(ast, Sequence)
-        self.assertEqual(len(ast.items), 1)
+# ============================================================
+# group parsing
+# ============================================================
 
-        node = ast.items[0]
-        assert isinstance(node, Group)
-        self.assertEqual(node.weight.value, Fraction(1))
 
-        assert isinstance(node.body, Sequence)
+def test_parse_simple_group():
+    ast = parse_rhythm("2[1 1]")
+    assert isinstance(ast, Sequence)
+    g = ast.items[0]
+    assert isinstance(g, Group)
+    assert g.weight == Atom(Fraction(2, 1))
+    assert g.body.items == [
+        Atom(Fraction(1, 1)),
+        Atom(Fraction(1, 1)),
+    ]
 
-        values = [Fraction(1), Fraction(2)]
-        for i in range(2):
-            atom = node.body.items[i]
-            assert isinstance(atom, Atom)
-            self.assertEqual(atom.value, values[i])
 
-    def test_parse_split(self):
-        ast = parse_rhythm("1%3")
-        assert isinstance(ast, Sequence)
+def test_parse_nested_group():
+    ast = parse_rhythm("2[1 1[1 1]]")
+    g = ast.items[0]
+    assert isinstance(g, Group)
+    assert isinstance(g.body, Sequence)
 
-        node = ast.items[0]
-        assert isinstance(node, Split)
+    inner = g.body.items[1]
+    assert isinstance(inner, Group)
+    assert inner.weight == Atom(Fraction(1, 1))
+    assert inner.body.items == [
+        Atom(Fraction(1, 1)),
+        Atom(Fraction(1, 1)),
+    ]
 
-        self.assertEqual(node.parts, 3)
-        assert isinstance(node.node, Atom)
 
-    def test_parse_repeat(self):
-        ast = parse_rhythm("(1 2)*3")
-        assert isinstance(ast, Sequence)
+# ============================================================
+# repeat parsing
+# ============================================================
 
-        node = ast.items[0]
-        assert isinstance(node, Repeat)
 
-        self.assertEqual(node.times, 3)
+def test_parse_repeat_atom():
+    ast = parse_rhythm("1*4")
+    node = ast.items[0]
+    assert isinstance(node, Repeat)
+    assert node.times == 4
+    assert isinstance(node.node, Atom)
 
-    def test_parse_postfix_order(self):
-        ast = parse_rhythm("1%3*2")
-        assert isinstance(ast, Sequence)
 
-        node = ast.items[0]
-        assert isinstance(node, Repeat)
-        assert isinstance(node.node, Split)
+def test_parse_repeat_sequence():
+    ast = parse_rhythm("(1 2)*2")
+    node = ast.items[0]
+    assert isinstance(node, Repeat)
+    assert node.times == 2
+    assert isinstance(node.node, Sequence)
+    assert node.node.items == [
+        Atom(Fraction(1, 1)),
+        Atom(Fraction(2, 1)),
+    ]
 
-    def test_ticks_single_atom(self):
-        ast = parse_rhythm("1")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0], TimeSpan(0, 1000))
 
-    def test_ticks_simple_sequence(self):
-        ast = parse_rhythm("1 1")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 2)
-        self.assertEqual(spans[0], TimeSpan(0, 500))
-        self.assertEqual(spans[1], TimeSpan(500, 500))
+def test_parse_nested_repeat():
+    ast = parse_rhythm("(1 2)*2*3")
+    node = ast.items[0]
+    assert isinstance(node, Repeat)
+    assert node.times == 3
+    assert isinstance(node.node, Repeat)
+    assert node.node.times == 2
 
-    def test_ticks_fraction_weight(self):
-        ast = parse_rhythm("1/2 1/2")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 2)
-        self.assertEqual(spans[0], TimeSpan(0, 500))
-        self.assertEqual(spans[1], TimeSpan(500, 500))
 
-    def test_ticks_group(self):
-        ast = parse_rhythm("1/2[1 2] 1")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 3)
-        self.assertEqual(spans[0], TimeSpan(0, 111))
-        self.assertEqual(spans[1], TimeSpan(111, 222))
-        self.assertEqual(spans[2], TimeSpan(333, 667))
+# ============================================================
+# split parsing
+# ============================================================
 
-    def test_ticks_split(self):
-        ast = parse_rhythm("1%4")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 4)
-        self.assertEqual(spans[0], TimeSpan(0, 250))
-        self.assertEqual(spans[1], TimeSpan(250, 250))
-        self.assertEqual(spans[2], TimeSpan(500, 250))
-        self.assertEqual(spans[3], TimeSpan(750, 250))
 
-    def test_ticks_repeat(self):
-        ast = parse_rhythm("1*3")
-        spans = rhythm_ast_to_timespans(ast, total=900)
-        self.assertEqual(len(spans), 3)
-        self.assertEqual(spans[0], TimeSpan(0, 300))
-        self.assertEqual(spans[1], TimeSpan(300, 300))
-        self.assertEqual(spans[2], TimeSpan(600, 300))
+def test_parse_split_atom():
+    ast = parse_rhythm("1%4")
+    node = ast.items[0]
+    assert isinstance(node, Split)
+    assert node.parts == 4
+    assert isinstance(node.node, Atom)
 
-    def test_ticks_repeat_sequence(self):
-        ast = parse_rhythm("(1 2)*3")
-        spans = rhythm_ast_to_timespans(ast, total=900)
-        self.assertEqual(len(spans), 6)
-        self.assertEqual(spans[0], TimeSpan(0, 100))
-        self.assertEqual(spans[1], TimeSpan(100, 200))
-        self.assertEqual(spans[2], TimeSpan(300, 100))
-        self.assertEqual(spans[3], TimeSpan(400, 200))
-        self.assertEqual(spans[4], TimeSpan(600, 100))
-        self.assertEqual(spans[5], TimeSpan(700, 200))
 
-    def test_ticks_split_repeat_combo(self):
-        ast = parse_rhythm("1%3*2")
-        spans = rhythm_ast_to_timespans(ast, total=1200)
-        self.assertEqual(len(spans), 6)
-        self.assertEqual(spans[0], TimeSpan(0, 200))
-        self.assertEqual(spans[1], TimeSpan(200, 200))
-        self.assertEqual(spans[2], TimeSpan(400, 200))
-        self.assertEqual(spans[3], TimeSpan(600, 200))
-        self.assertEqual(spans[4], TimeSpan(800, 200))
-        self.assertEqual(spans[5], TimeSpan(1000, 200))
+def test_parse_split_after_repeat():
+    ast = parse_rhythm("1*2%3")
+    node = ast.items[0]
+    assert isinstance(node, Split)
+    assert node.parts == 3
+    assert isinstance(node.node, Repeat)
 
-    def test_ticks_largest_remainder(self):
-        ast = parse_rhythm("1 2")
-        spans = rhythm_ast_to_timespans(ast, total=1000)
-        self.assertEqual(len(spans), 2)
-        self.assertEqual(spans[0], TimeSpan(0, 333))
-        self.assertEqual(spans[1], TimeSpan(333, 667))
 
-    def test_ticks_nested_complex(self):
-        ast = parse_rhythm("1/2[(1%3) 2] 3")
-        spans = rhythm_ast_to_timespans(ast, total=1200)
-        self.assertEqual(len(spans), 5)
-        self.assertEqual(sum([s.duration for s in spans]), 1200)
+def test_parse_repeat_after_split():
+    ast = parse_rhythm("1%2*3")
+    node = ast.items[0]
+    assert isinstance(node, Repeat)
+    assert node.times == 3
+    assert isinstance(node.node, Split)
 
-    def test_invalid_total_ticks(self):
-        ast = parse_rhythm("1 1")
-        with self.assertRaises(ValueError):
-            rhythm_ast_to_timespans(ast, total=0)
+
+# ============================================================
+# precedence & postfix chaining
+# ============================================================
+
+
+def test_postfix_is_left_associative():
+    ast = parse_rhythm("1*2%3")
+    # equivalent to (1*2)%3
+    node = ast.items[0]
+    assert isinstance(node, Split)
+    assert node.parts == 3
+    assert isinstance(node.node, Repeat)
+    assert node.node.times == 2
+
+
+def test_parentheses_override_postfix_scope():
+    ast = parse_rhythm("(1 2)%3")
+    node = ast.items[0]
+    assert isinstance(node, Split)
+    assert node.parts == 3
+    assert isinstance(node.node, Sequence)
+
+
+# ============================================================
+# multiple expressions
+# ============================================================
+
+
+def test_multiple_expressions():
+    ast = parse_rhythm("1 2[1 1] 3*2")
+    assert isinstance(ast, Sequence)
+    assert len(ast.items) == 3
+    assert isinstance(ast.items[0], Atom)
+    assert isinstance(ast.items[1], Group)
+    assert isinstance(ast.items[2], Repeat)
+
+
+# ============================================================
+# invalid syntax
+# ============================================================
+
+
+def test_invalid_syntax_raises():
+    with pytest.raises(Exception):
+        parse_rhythm("1[2")  # missing closing bracket

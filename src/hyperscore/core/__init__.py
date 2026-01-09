@@ -26,7 +26,17 @@ and I/O layers are built.
 from .score import NoteEvent, Score, ZippedNotes
 from .time import TimeSpan, bpm_to_ms
 from .time_pipeline import TimeSpanPipeline
-from .time_transforms import gate, probability, shift, stretch
+from .time_transforms import (
+    drop_if,
+    duplicate,
+    identity,
+    keep_if,
+    probability,
+    shift,
+    split_by,
+    split_even,
+    stretch,
+)
 
 __all__ = [
     "NoteEvent",
@@ -35,8 +45,13 @@ __all__ = [
     "TimeSpanPipeline",
     "ZippedNotes",
     "bpm_to_ms",
-    "gate",
+    "drop_if",
+    "duplicate",
+    "identity",
+    "keep_if",
     "probability",
     "shift",
+    "split_by",
+    "split_even",
     "stretch",
 ]

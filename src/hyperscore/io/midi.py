@@ -21,15 +21,14 @@ class MidiTimebase:
     """
     MIDI timebase configuration.
 
-    This class defines the mapping between real time
-    (milliseconds) and MIDI ticks.
+    This class defines the mapping between real time expressed
+    in milliseconds and discrete MIDI ticks.
 
-    Attributes
-    ----------
-    ticks_per_beat : int
-        MIDI resolution.
-    tempo_us_per_beat : int
-        Tempo expressed as microseconds per beat.
+    Notes
+    -----
+    - MIDI timing is inherently discrete and quantized.
+    - This class provides only linear conversion utilities;
+      no musical interpretation is applied here.
     """
 
     ticks_per_beat: int = 480
@@ -39,64 +38,39 @@ class MidiTimebase:
     def ticks_per_second(self) -> float:
         """
         Return the number of MIDI ticks per second.
+
+        This value is derived from ticks_per_beat and tempo.
         """
         return self.ticks_per_beat * 1_000_000 / self.tempo_us_per_beat
 
     def ms_to_ticks_float(self, ms: int) -> float:
         """
         Convert milliseconds to fractional MIDI ticks.
+
+        This method performs no rounding and is intended
+        for internal use prior to quantization.
         """
         return ms * self.ticks_per_second / 1000.0
 
 
-# ============================================================
-# Largest Remainder Method (global quantization)
-# ============================================================
-
-
-def quantize_times_lrm(
+def ms_to_ticks_int(
     times_ms: Sequence[int],
     *,
     timebase: MidiTimebase,
 ) -> list[int]:
     """
     Quantize absolute times (milliseconds) into MIDI ticks
-    using the Largest Remainder Method (LRM).
+    using simple truncation.
 
-    This method ensures that the total tick sum matches
-    the rounded ideal value, avoiding cumulative timing drift.
-
-    Parameters
-    ----------
-    times_ms : sequence of int
-        Absolute times in milliseconds.
-    timebase : MidiTimebase
-        MIDI timebase configuration.
-
-    Returns
-    -------
-    list of int
-        Quantized absolute times in MIDI ticks.
+    Notes
+    -----
+    - Each time value is converted independently.
+    - This favors local temporal consistency over
+      global error minimization.
+    - This behavior is intentional: MIDI is treated
+      as a lossy output format.
     """
-    floats = [timebase.ms_to_ticks_float(t) for t in times_ms]
-    floors = [int(x) for x in floats]
-    remainders = [x - f for x, f in zip(floats, floors)]
-
-    target_sum = round(sum(floats))
-    current_sum = sum(floors)
-    diff = target_sum - current_sum
-
-    if diff > 0:
-        # distribute +1 to largest remainders
-        indices = sorted(
-            range(len(remainders)),
-            key=lambda i: remainders[i],
-            reverse=True,
-        )
-        for i in indices[:diff]:
-            floors[i] += 1
-
-    return floors
+    return [int(timebase.ms_to_ticks_float(t)) for t in times_ms]
 
 
 # ============================================================
@@ -112,24 +86,23 @@ def note_events_to_midi_messages(
     """
     Convert NoteEvents into absolute-time MIDI messages.
 
-    Each NoteEvent is expanded into:
-    - a note_on message at span.start
-    - a note_off message at span.end
+    Each NoteEvent is expanded into exactly two messages:
+    - note_on  at span.start
+    - note_off at span.end
 
-    Absolute times are quantized globally to MIDI ticks.
+    Absolute times are converted from milliseconds to
+    MIDI ticks using independent quantization.
 
-    Parameters
-    ----------
-    events : iterable of NoteEvent
-        Input note events.
-    timebase : MidiTimebase
-        MIDI timebase configuration.
-
-    Returns
-    -------
-    list of (int, Message)
-        Pairs of (absolute_tick, MIDI message).
+    Notes
+    -----
+    - Quantization is performed per event boundary,
+      not globally.
+    - Relative ordering between note_on and note_off
+      for a single event is preserved.
+    - MIDI timing inaccuracies within ±1 tick are
+      considered acceptable.
     """
+
     # ---- build absolute ms times ----
     times_ms: list[int] = []
     msg_specs: list[tuple[str, NoteEvent]] = []
@@ -141,8 +114,8 @@ def note_events_to_midi_messages(
         times_ms.append(e.span.end)
         msg_specs.append(("off", e))
 
-    # ---- quantize ms -> ticks globally ----
-    times_ticks = quantize_times_lrm(times_ms, timebase=timebase)
+    # ---- quantize ms -> ticks ----
+    times_ticks = ms_to_ticks_int(times_ms, timebase=timebase)
 
     # ---- build MIDI messages ----
     messages: list[tuple[int, Message]] = []
@@ -168,6 +141,7 @@ def note_events_to_midi_messages(
         messages.append((tick, msg))
 
     # ---- sort by absolute tick ----
+    # note_off is ordered before note_on at the same tick
     messages.sort(key=lambda x: (x[0], 0 if x[1].type == "note_off" else 1))
     return messages
 
@@ -176,16 +150,15 @@ def absolute_to_delta(messages: list[tuple[int, Message]]) -> list[Message]:
     """
     Convert absolute-tick MIDI messages into delta-time messages.
 
-    Parameters
-    ----------
-    messages : list of (int, Message)
-        Absolute-tick MIDI messages.
+    This function assumes that input messages are sorted
+    by absolute tick.
 
-    Returns
-    -------
-    list of Message
-        MIDI messages with delta-time populated.
+    Notes
+    -----
+    - The returned Message objects are mutated in-place
+      to populate the delta-time field.
     """
+
     out: list[Message] = []
     last_tick = 0
 
@@ -207,7 +180,14 @@ class MidiExporter:
     MIDI file exporter for TimeSpan-based NoteEvents.
 
     This exporter converts hyperscore NoteEvents into
-    a standard MIDI file, performing global time quantization.
+    a standard MIDI file.
+
+    Notes
+    -----
+    - MIDI is treated as a lossy output format.
+    - Timing is quantized to integer ticks.
+    - Structural correctness is enforced at the
+      TimeSpan level, not the MIDI level.
     """
 
     def __init__(
@@ -243,11 +223,6 @@ class MidiExporter:
         channel : int or None, optional
             If specified, only events on this channel
             are exported.
-
-        Notes
-        -----
-        - Event ordering is derived from TimeSpan start times.
-        - MIDI is treated as a lossy output format.
         """
         midi = MidiFile(ticks_per_beat=self.timebase.ticks_per_beat)
         track = MidiTrack()
@@ -284,8 +259,8 @@ class MidiPlayer:
     """
     Lightweight real-time MIDI player for NoteEvents.
 
-    This player schedules MIDI messages based on TimeSpan
-    timing and sends them to a MIDI output port.
+    This class is intended for preview and debugging,
+    not for sample-accurate performance.
     """
 
     def __init__(
@@ -296,13 +271,6 @@ class MidiPlayer:
     ):
         """
         Initialize the MIDI player.
-
-        Parameters
-        ----------
-        output : mido output port
-            MIDI output destination.
-        timebase : MidiTimebase or None
-            Optional timebase configuration.
         """
         self.output = output
         self.timebase = timebase or MidiTimebase()
@@ -316,20 +284,11 @@ class MidiPlayer:
         """
         Play NoteEvents in real time via a MIDI output port.
 
-        Parameters
-        ----------
-        events : iterable of NoteEvent
-            Input note events.
-        channel : int or None, optional
-            If specified, only events on this channel
-            are played.
-
         Notes
         -----
-        - Scheduling uses wall-clock time and is not
-          sample-accurate.
-        - Intended for preview and testing, not
-          high-precision performance.
+        - Scheduling is based on wall-clock time.
+        - Timing resolution is limited by the OS scheduler.
+        - This method is unsuitable for precise timing evaluation.
         """
         if channel is not None:
             events = [e for e in events if e.channel == channel]
@@ -344,7 +303,6 @@ class MidiPlayer:
             logical_time = time.time()
 
             for msg in delta_msgs:
-                # MIDI delta time is in ticks → convert to seconds
                 delta_sec = msg.time / self.timebase.ticks_per_second  # type: ignore
                 logical_time += delta_sec
 

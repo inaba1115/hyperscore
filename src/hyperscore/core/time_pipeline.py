@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from hyperscore.core.time import TimeSpan
 
-TimeSpanTransform = Callable[[TimeSpan], TimeSpan | None]
+TimeSpanTransform = Callable[[TimeSpan], Iterable[TimeSpan]]
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class TimeSpanPipeline:
 
     # ---------------- core ----------------
 
-    def apply(self, span: TimeSpan) -> TimeSpan | None:
+    def apply(self, span: TimeSpan) -> list[TimeSpan]:
         """
         Apply the pipeline to a single TimeSpan.
 
@@ -52,11 +52,12 @@ class TimeSpanPipeline:
             Transformed TimeSpan, or None if dropped
             by any transform.
         """
-        cur: TimeSpan | None = span
+        cur: list[TimeSpan] = [span]
         for t in self.transforms:
-            if cur is None:
-                return None
-            cur = t(cur)
+            nxt: list[TimeSpan] = []
+            for s in cur:
+                nxt.extend(list(t(s)))
+            cur = nxt
         return cur
 
     def apply_all(self, spans: Iterable[TimeSpan]) -> list[TimeSpan]:
@@ -78,9 +79,7 @@ class TimeSpanPipeline:
         """
         out: list[TimeSpan] = []
         for s in spans:
-            s2 = self.apply(s)
-            if s2 is not None:
-                out.append(s2)
+            out.extend(self.apply(s))
         return out
 
     # ---------------- composition ----------------

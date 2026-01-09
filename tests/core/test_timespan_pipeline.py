@@ -16,7 +16,8 @@ def test_pipeline_identity():
     pipe = TimeSpanPipeline()
 
     out = pipe.apply(span)
-    assert out == span
+    assert len(out) == 1
+    assert out[0] == span
 
 
 def test_pipeline_single_transform():
@@ -27,9 +28,9 @@ def test_pipeline_single_transform():
     pipe = TimeSpanPipeline().then(gate(0.5))
 
     out = pipe.apply(span)
-    assert out is not None
-    assert out.start == 10
-    assert out.duration == 5
+    assert len(out) == 1
+    assert out[0].start == 10
+    assert out[0].duration == 5
 
 
 # ============================================================
@@ -42,14 +43,14 @@ def test_pipeline_drop():
     Transform returning None must drop the TimeSpan.
     """
 
-    def drop(_: TimeSpan) -> TimeSpan | None:
-        return None
+    def drop(_: TimeSpan) -> list[TimeSpan]:
+        return []
 
     span = TimeSpan(0, 10)
     pipe = TimeSpanPipeline().then(drop)
 
     out = pipe.apply(span)
-    assert out is None
+    assert out == []
 
 
 def test_pipeline_drop_short_circuit():
@@ -58,19 +59,19 @@ def test_pipeline_drop_short_circuit():
     """
     called = False
 
-    def drop(_: TimeSpan) -> TimeSpan | None:
-        return None
+    def drop(_: TimeSpan) -> list[TimeSpan]:
+        return []
 
-    def marker(span: TimeSpan) -> TimeSpan:
+    def marker(span: TimeSpan) -> list[TimeSpan]:
         nonlocal called
         called = True
-        return span
+        return [span]
 
     span = TimeSpan(0, 10)
     pipe = TimeSpanPipeline().then(drop, marker)
 
     out = pipe.apply(span)
-    assert out is None
+    assert out == []
     assert called is False
 
 
@@ -88,8 +89,8 @@ def test_apply_all_filters_none():
         TimeSpan(10, 10),
     ]
 
-    def drop_second(span: TimeSpan) -> TimeSpan | None:
-        return None if span.start == 10 else span
+    def drop_second(span: TimeSpan) -> list[TimeSpan]:
+        return [] if span.start == 10 else [span]
 
     pipe = TimeSpanPipeline().then(drop_second)
 
@@ -115,9 +116,9 @@ def test_then_composition_order():
     )
 
     out = pipe.apply(span)
-    assert out is not None
-    assert out.start == 15
-    assert out.duration == 5
+    assert len(out) == 1
+    assert out[0].start == 15
+    assert out[0].duration == 5
 
 
 def test_pipeline_or_operator():
@@ -132,9 +133,9 @@ def test_pipeline_or_operator():
     pipe = p1 | p2
     out = pipe.apply(span)
 
-    assert out is not None
-    assert out.start == 10
-    assert out.duration == 10
+    assert len(out) == 1
+    assert out[0].start == 10
+    assert out[0].duration == 10
 
 
 # ============================================================
@@ -151,8 +152,8 @@ def test_pipeline_is_immutable():
 
     span = TimeSpan(0, 10)
 
-    assert p1.apply(span) == span
-    assert p2.apply(span) != span
+    assert p1.apply(span)[0] == span
+    assert p2.apply(span)[0] != span
 
 
 # ============================================================
@@ -160,7 +161,7 @@ def test_pipeline_is_immutable():
 # ============================================================
 
 
-def test_pipeline_does_not_modify_original_span():
+def test_pipeline_does_not_mutate_input_span():
     """
     Pipeline must not mutate original TimeSpan.
     """
@@ -169,6 +170,6 @@ def test_pipeline_does_not_modify_original_span():
 
     out = pipe.apply(span)
 
-    assert out is not None
+    assert len(out) == 1
     assert span.start == 0
     assert span.duration == 10

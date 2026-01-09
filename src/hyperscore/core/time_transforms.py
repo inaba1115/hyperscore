@@ -1,6 +1,20 @@
+from __future__ import annotations
+
 import random
+from collections.abc import Callable
 
 from hyperscore.core.time import TimeSpan
+from hyperscore.core.time_pipeline import TimeSpanTransform
+
+
+def lift_map(f: Callable[[TimeSpan], TimeSpan | None]) -> TimeSpanTransform:
+    def wrapped(span: TimeSpan):
+        out = f(span)
+        if out is None:
+            return []
+        return [out]
+
+    return wrapped
 
 
 def gate(ratio: float):
@@ -21,11 +35,13 @@ def gate(ratio: float):
         A TimeSpan transform.
     """
 
-    def f(span: TimeSpan) -> TimeSpan:
-        return TimeSpan(
-            start=span.start,
-            duration=int(span.duration * ratio),
-        )
+    def f(span: TimeSpan) -> list[TimeSpan]:
+        return [
+            TimeSpan(
+                start=span.start,
+                duration=round(span.duration * ratio),
+            )
+        ]
 
     return f
 
@@ -54,8 +70,8 @@ def probability(p: float):
         A TimeSpan transform.
     """
 
-    def f(span: TimeSpan) -> TimeSpan | None:
-        return span if random.random() < p else None
+    def f(span: TimeSpan) -> list[TimeSpan]:
+        return [span] if random.random() < p else []
 
     return f
 
@@ -77,8 +93,8 @@ def shift(delta: int):
         A TimeSpan transform.
     """
 
-    def f(span: TimeSpan) -> TimeSpan:
-        return span.shift(delta)
+    def f(span: TimeSpan) -> list[TimeSpan]:
+        return [span.shift(delta)]
 
     return f
 
@@ -103,7 +119,7 @@ def stretch(factor: float):
         A TimeSpan transform.
     """
 
-    def f(span: TimeSpan) -> TimeSpan:
-        return span.stretch(factor)
+    def f(span: TimeSpan) -> list[TimeSpan]:
+        return [span.stretch(factor)]
 
     return f

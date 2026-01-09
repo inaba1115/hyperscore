@@ -33,6 +33,7 @@ from .time_transforms import (
     keep_if,
     probability,
     shift,
+    split_by,
     split_even,
     stretch,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "keep_if",
     "probability",
     "shift",
+    "split_by",
     "split_even",
     "stretch",
 ]

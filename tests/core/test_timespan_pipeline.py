@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from hyperscore.core import TimeSpan, TimeSpanPipeline
-from hyperscore.core.time_transforms import gate, shift, stretch
+from hyperscore.core.time_transforms import (
+    duplicate,
+    gate,
+    shift,
+    split_even,
+    stretch,
+)
 
 # ============================================================
 # basic apply
@@ -40,7 +46,7 @@ def test_pipeline_single_transform():
 
 def test_pipeline_drop():
     """
-    Transform returning None must drop the TimeSpan.
+    Transform returning an empty list must drop the TimeSpan.
     """
 
     def drop(_: TimeSpan) -> list[TimeSpan]:
@@ -80,9 +86,9 @@ def test_pipeline_drop_short_circuit():
 # ============================================================
 
 
-def test_apply_all_filters_none():
+def test_apply_all_excludes_dropped_spans():
     """
-    apply_all must filter out None results.
+    apply_all must exclude spans dropped by transforms.
     """
     spans = [
         TimeSpan(0, 10),
@@ -139,7 +145,75 @@ def test_pipeline_or_operator():
 
 
 # ============================================================
-# immutability
+# generative semantics (v0.2.0)
+# ============================================================
+
+
+def test_pipeline_duplicate():
+    """
+    duplicate(n) must produce n identical TimeSpans.
+    """
+    span = TimeSpan(0, 10)
+    pipe = TimeSpanPipeline().then(duplicate(3))
+
+    out = pipe.apply(span)
+
+    assert len(out) == 3
+    assert all(s == span for s in out)
+
+
+def test_pipeline_split_even_preserves_total_duration():
+    """
+    split_even(n) must preserve total duration exactly.
+    """
+    span = TimeSpan(0, 10)
+    pipe = TimeSpanPipeline().then(split_even(3))
+
+    out = pipe.apply(span)
+
+    assert len(out) == 3
+    assert sum(s.duration for s in out) == 10
+    assert out[0].start == 0
+    assert out[1].start == out[0].end
+    assert out[2].start == out[1].end
+
+
+def test_pipeline_generate_then_drop():
+    """
+    Dropping after expansion must drop all generated spans.
+    """
+
+    def drop_all(_: TimeSpan) -> list[TimeSpan]:
+        return []
+
+    span = TimeSpan(0, 10)
+    pipe = TimeSpanPipeline().then(
+        duplicate(3),
+        drop_all,
+    )
+
+    out = pipe.apply(span)
+    assert out == []
+
+
+def test_pipeline_split_then_shift():
+    """
+    Transforms must be applied left-to-right.
+    """
+    span = TimeSpan(0, 10)
+    pipe = TimeSpanPipeline().then(
+        split_even(2),
+        shift(5),
+    )
+
+    out = pipe.apply(span)
+
+    assert [s.start for s in out] == [5, 10]
+    assert [s.duration for s in out] == [5, 5]
+
+
+# ============================================================
+# immutability & safety
 # ============================================================
 
 
@@ -154,11 +228,6 @@ def test_pipeline_is_immutable():
 
     assert p1.apply(span)[0] == span
     assert p2.apply(span)[0] != span
-
-
-# ============================================================
-# safety
-# ============================================================
 
 
 def test_pipeline_does_not_mutate_input_span():

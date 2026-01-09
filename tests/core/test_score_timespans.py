@@ -72,9 +72,10 @@ def test_events_between_span_no_overlap():
 
 def test_events_between_span_sorted_and_early_exit():
     """
-    events_between_span must rely on sorted order
-    and stop scanning after span.end.
-    (behavioral guarantee, not performance measurement)
+    events_between_span must rely on sorted TimeSpan order
+    and stop scanning once spans start at or after span.end.
+
+    This is a behavioral guarantee, not a performance benchmark.
     """
     score: Score[NoteEvent] = Score()
 

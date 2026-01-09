@@ -13,9 +13,10 @@ from itertools import cycle
 from pathlib import Path
 
 from hyperscore import Score, parse_rhythm
-from hyperscore.core import NoteEvent, bpm_to_ms
-from hyperscore.core.time_pipeline import TimeSpanPipeline
-from hyperscore.core.time_transforms import (
+from hyperscore.core import (
+    NoteEvent,
+    TimeSpanPipeline,
+    bpm_to_ms,
     duplicate,
     probability,
     shift,

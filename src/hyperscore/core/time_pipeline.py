@@ -11,26 +11,33 @@ TimeSpanTransform = Callable[[TimeSpan], Iterable[TimeSpan]]
 @dataclass(frozen=True)
 class TimeSpanPipeline:
     """
-    Immutable pipeline for transforming TimeSpan objects.
+    Immutable pipeline for transforming and expanding TimeSpan objects.
 
-    A pipeline is a pure, composable sequence of TimeSpan
-    transformations. Each transform may either:
+    A TimeSpanPipeline represents a pure, composable sequence of
+    transformations from a single TimeSpan to zero or more TimeSpans.
 
-    - return a modified TimeSpan
-    - return ``None`` to drop the span
+    Each transform is a function of the form::
+
+        TimeSpan -> Iterable[TimeSpan]
+
+    This allows a pipeline to:
+    - modify a TimeSpan (1 → 1)
+    - drop a TimeSpan (1 → 0)
+    - duplicate or split a TimeSpan (1 → N)
 
     Notes
     -----
-    - The pipeline itself holds no state.
-    - No temporal ordering is enforced.
-    - This class does not generate TimeSpans; it only
-      transforms existing ones.
+    - The pipeline is immutable and holds no internal state.
+    - Transformations are applied left-to-right.
+    - Flattening of intermediate results is handled internally.
+    - No global temporal ordering is enforced.
+    - TimeSpan objects are treated as immutable values.
 
     Typical use cases include:
-    - quantization
-    - clipping
-    - filtering by duration or position
-    - time-warping in the TimeSpan domain
+    - time-domain transformations (shift, stretch)
+    - structural expansion (duplication, subdivision)
+    - rhythmic generation and variation
+    - stochastic or conditional filtering
     """
 
     transforms: tuple[TimeSpanTransform, ...] = ()
@@ -48,9 +55,8 @@ class TimeSpanPipeline:
 
         Returns
         -------
-        TimeSpan or None
-            Transformed TimeSpan, or None if dropped
-            by any transform.
+        list of TimeSpan
+            Zero or more TimeSpans produced by the pipeline.
         """
         cur: list[TimeSpan] = [span]
         for t in self.transforms:
@@ -64,9 +70,6 @@ class TimeSpanPipeline:
         """
         Apply the pipeline to an iterable of TimeSpans.
 
-        TimeSpans dropped by the pipeline are excluded
-        from the result.
-
         Parameters
         ----------
         spans : iterable of TimeSpan
@@ -75,7 +78,8 @@ class TimeSpanPipeline:
         Returns
         -------
         list of TimeSpan
-            Transformed TimeSpans.
+            All TimeSpans produced by applying the pipeline
+            to each input span.
         """
         out: list[TimeSpan] = []
         for s in spans:

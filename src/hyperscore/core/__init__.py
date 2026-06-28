@@ -8,6 +8,7 @@ hyperscore:
 - NoteEvent: minimal time-bounded musical event
 - Score: container and coordinator for events on a time axis
 - TimeSpanPipeline: composable transformations over TimeSpans
+- TimeSpanTransform: type alias for transformations in a pipeline
 - ZippedNotes: convenience API for simple sequential note generation
 
 Design principles
@@ -25,7 +26,7 @@ and I/O layers are built.
 
 from .score import NoteEvent, Score, ZippedNotes
 from .time import TimeSpan, bpm_to_ms
-from .time_pipeline import TimeSpanPipeline
+from .time_pipeline import TimeSpanPipeline, TimeSpanTransform
 from .time_transforms import (
     drop_if,
     duplicate,
@@ -43,6 +44,7 @@ __all__ = [
     "Score",
     "TimeSpan",
     "TimeSpanPipeline",
+    "TimeSpanTransform",
     "ZippedNotes",
     "bpm_to_ms",
     "drop_if",

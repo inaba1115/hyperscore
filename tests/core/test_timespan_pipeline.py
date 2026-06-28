@@ -3,7 +3,6 @@ from __future__ import annotations
 from hyperscore.core import TimeSpan, TimeSpanPipeline
 from hyperscore.core.time_transforms import (
     duplicate,
-    gate,
     shift,
     split_even,
     stretch,
@@ -31,7 +30,7 @@ def test_pipeline_single_transform():
     Single transform must be applied.
     """
     span = TimeSpan(10, 10)
-    pipe = TimeSpanPipeline().then(gate(0.5))
+    pipe = TimeSpanPipeline().then(stretch(0.5))
 
     out = pipe.apply(span)
     assert len(out) == 1

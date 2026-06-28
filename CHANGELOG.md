@@ -58,3 +58,4 @@ Initial public release.
 ## 0.3.0
 
 - Export `TimeSpanTransform` type to make it easier for users to define their own functions.
+- Removed the deprecated function (gate).

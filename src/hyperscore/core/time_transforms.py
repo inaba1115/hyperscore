@@ -143,17 +143,6 @@ def stretch(factor: float) -> TimeSpanTransform:
     return f
 
 
-def gate(ratio: float) -> TimeSpanTransform:
-    """
-    Alias of ``stretch``.
-
-    This name is kept for backward compatibility,
-    but ``stretch`` is the preferred terminology
-    for time-domain transformations.
-    """
-    return stretch(ratio)
-
-
 # ============================================================
 # Structural / generative transforms
 # ============================================================

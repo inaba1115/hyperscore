@@ -54,3 +54,7 @@ Initial public release.
 - MIDI is treated as a **lossy output format**.
 - Structural correctness is enforced at the `TimeSpan`
   level, not at the MIDI level.
+
+## 0.3.0
+
+- Export `TimeSpanTransform` type to make it easier for users to define their own functions.

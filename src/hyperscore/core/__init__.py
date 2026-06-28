@@ -30,6 +30,8 @@ from .time_pipeline import TimeSpanPipeline, TimeSpanTransform
 from .time_transforms import (
     drop_if,
     duplicate,
+    duplicate_by,
+    gate_by,
     identity,
     keep_if,
     probability,
@@ -49,6 +51,8 @@ __all__ = [
     "bpm_to_ms",
     "drop_if",
     "duplicate",
+    "duplicate_by",
+    "gate_by",
     "identity",
     "keep_if",
     "probability",

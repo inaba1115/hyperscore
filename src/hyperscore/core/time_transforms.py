@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Callable, Iterable
+from itertools import cycle
 
 from hyperscore.core.time import TimeSpan
 from hyperscore.core.time_pipeline import TimeSpanTransform
@@ -167,6 +168,93 @@ def duplicate(n: int) -> TimeSpanTransform:
         return [span] * n
 
     return f
+
+
+def _validate_counts(counts: Iterable[int], *, name: str = "counts") -> tuple[int, ...]:
+    values = tuple(counts)
+
+    if not values:
+        raise ValueError(f"{name} must be non-empty")
+
+    invalid = [n for n in values if not isinstance(n, int) or isinstance(n, bool) or n < 0]
+    if invalid:
+        raise ValueError(f"{name} must contain non-negative integers: {invalid!r}")
+
+    return values
+
+
+def _validate_binary_pattern(
+    pattern: Iterable[int | bool],
+    *,
+    name: str = "pattern",
+) -> tuple[bool, ...]:
+    values = tuple(pattern)
+
+    if not values:
+        raise ValueError(f"{name} must be non-empty")
+
+    invalid = [x for x in values if not isinstance(x, (int, bool)) or x not in (0, 1, False, True)]
+    if invalid:
+        raise ValueError(f"{name} must contain only 0/1 or bool values: {invalid!r}")
+
+    return tuple(bool(x) for x in values)
+
+
+def duplicate_by(counts: Iterable[int]) -> TimeSpanTransform:
+    """
+    Duplicate each TimeSpan according to a cyclic count pattern.
+
+    Parameters
+    ----------
+    counts : iterable of int
+        Non-negative duplication counts.
+
+    Notes
+    -----
+    - ``0`` drops the span.
+    - ``1`` keeps the span unchanged.
+    - ``n >= 2`` emits ``n`` identical spans.
+    - The count pattern is cycled across incoming spans.
+
+    Typical use cases include:
+    - aligning spans with chord tones
+    - layered events with varying multiplicity
+    - periodic thinning / expansion patterns
+    """
+
+    counts = _validate_counts(counts)
+    counts_cycle = cycle(counts)
+
+    def f(span: TimeSpan) -> list[TimeSpan]:
+        return [span] * next(counts_cycle)
+
+    return f
+
+
+def gate_by(pattern: Iterable[int | bool]) -> TimeSpanTransform:
+    """
+    Keep or drop TimeSpans according to a cyclic gate pattern.
+
+    Parameters
+    ----------
+    pattern : iterable of int | bool
+        Binary gate pattern.
+        ``1`` / ``True`` keeps the span.
+        ``0`` / ``False`` drops the span.
+
+    Notes
+    -----
+    - This is a 0/1 specialization of ``duplicate_by``.
+    - The gate pattern is cycled across incoming spans.
+
+    Typical use cases include:
+    - rests
+    - rhythmic thinning
+    - periodic omissions
+    """
+
+    gates = _validate_binary_pattern(pattern)
+    return duplicate_by(1 if gate else 0 for gate in gates)
 
 
 def split_even(n: int) -> TimeSpanTransform:

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import pytest
+
 from hyperscore.core import TimeSpan, TimeSpanPipeline
 from hyperscore.core.time_transforms import (
     duplicate,
+    duplicate_by,
+    gate_by,
     shift,
     split_even,
     stretch,
@@ -159,6 +163,53 @@ def test_pipeline_duplicate():
 
     assert len(out) == 3
     assert all(s == span for s in out)
+
+
+def test_pipeline_duplicate_by():
+    """
+    duplicate_by(counts) must produce TimeSpans according to the count pattern.
+    """
+    spans = [TimeSpan(0, 10), TimeSpan(10, 10), TimeSpan(20, 10)]
+    pipe = TimeSpanPipeline().then(duplicate_by([1, 2, 3]))
+
+    out = pipe.apply_all(spans)
+
+    assert len(out) == 6
+    assert out[0] == spans[0]
+    assert out[1] == spans[1]
+    assert out[2] == spans[1]
+    assert out[3] == spans[2]
+    assert out[4] == spans[2]
+    assert out[5] == spans[2]
+
+
+def test_duplicate_by_rejects_empty_counts():
+    with pytest.raises(ValueError, match="counts must be non-empty"):
+        duplicate_by([])
+
+
+def test_duplicate_by_rejects_negative_counts():
+    with pytest.raises(ValueError, match="non-negative integers"):
+        duplicate_by([1, -1, 2])
+
+
+def test_pipeline_gate_by():
+    """
+    gate_by(pattern) must filter TimeSpans according to the binary pattern.
+    """
+    spans = [TimeSpan(0, 10), TimeSpan(10, 10), TimeSpan(20, 10)]
+    pipe = TimeSpanPipeline().then(gate_by([1, 0, 1]))
+
+    out = pipe.apply_all(spans)
+
+    assert len(out) == 2
+    assert out[0] == spans[0]
+    assert out[1] == spans[2]
+
+
+def test_gate_by_rejects_non_binary_pattern():
+    with pytest.raises(ValueError, match="only 0/1"):
+        gate_by([1, 2, 0])
 
 
 def test_pipeline_split_even_preserves_total_duration():
